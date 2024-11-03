@@ -1,0 +1,29 @@
+[project]
+name = "usd-inspect"
+version = "0.1.0"
+description = "A tool for inspecting USD files."
+readme = "README.md" 
+authors = [{ name = "Jaime Florian Urueta", email = "jaimeflorian27@gmail.com" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+
+[project.dependencies]
+textual = "*"
+usd-core = "*"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pyright",
+    "pytest",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
