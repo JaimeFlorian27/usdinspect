@@ -27,3 +27,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["CPY001"]
