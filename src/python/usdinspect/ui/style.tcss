@@ -1,3 +1,11 @@
+DataTable{
+  height: 100%;
+}
+
+StageTree{
+  height: 50%;
+}
+
 Placeholder{
-  height: 10;
+  width: 50%;
 }

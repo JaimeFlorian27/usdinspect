@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from pxr.Usd import Prim, Stage
 from textual.app import App, ComposeResult
-from textual.widgets import DataTable, Footer, Header, Placeholder, Tree, DirectoryTree
+from textual.containers import HorizontalScroll
+from textual.widgets import DataTable, Footer, Header, Tree
 
 if TYPE_CHECKING:
     from textual.widgets.tree import TreeNode
@@ -68,7 +69,7 @@ class UsdInspectApp(App):
         super().__init__()
         self._stage = stage
         self._stage_tree = StageTree("/")
-        self._prim_properties_table = DataTable()
+        self._prim_attributes_table = DataTable()
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -81,9 +82,27 @@ class UsdInspectApp(App):
         self._stage_tree.populate(self._stage)
         yield self._stage_tree
 
-        self._prim_properties_table.add_columns("Type", "Property Name", "Value")
-        yield self._prim_properties_table
+        self._prim_attributes_table.add_columns("Type", "Property Name", "Value")
+        yield HorizontalScroll(self._prim_attributes_table)
         yield Footer()
+
+    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        """Handle the selection of a prim node in the tree.
+
+        populate any widgets whose data depend on the currently selected prim.
+
+        """
+        if not event.node.data:
+            return
+        prim = self._stage.GetPrimAtPath(event.node.data)
+
+        self._prim_attributes_table.clear()
+        for attribute in prim.GetAttributes():
+            self._prim_attributes_table.add_row(
+                attribute.GetTypeName(),
+                attribute.GetName(),
+                attribute.Get(),
+            )
 
 
 if __name__ == "__main__":
