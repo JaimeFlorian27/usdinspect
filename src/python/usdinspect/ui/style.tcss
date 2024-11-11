@@ -1,11 +1,12 @@
 DataTable{
-  height: 100%;
+  height: 1fr;
 }
 
-StageTree{
-  height: 50%;
-}
+TabbedContent{
+  width: 1fr;
+  }
 
 Placeholder{
-  width: 50%;
+  height: 1fr;
+  width: 1fr;
 }

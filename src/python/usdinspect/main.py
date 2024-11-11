@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from pxr.Usd import Prim, Stage
 from textual.app import App, ComposeResult
 from textual.containers import HorizontalScroll
-from textual.widgets import DataTable, Footer, Header, Tree
+from textual.widgets import DataTable, Footer, Header, Placeholder, TabbedContent, Tree
 
 if TYPE_CHECKING:
     from textual.widgets.tree import TreeNode
@@ -80,10 +80,16 @@ class UsdInspectApp(App):
         """
         yield Header()
         self._stage_tree.populate(self._stage)
-        yield self._stage_tree
+        with HorizontalScroll():
+            yield self._stage_tree
+            yield Placeholder("Placeholder Composition view")
 
-        self._prim_attributes_table.add_columns("Type", "Property Name", "Value")
-        yield HorizontalScroll(self._prim_attributes_table)
+        self._prim_attributes_table.add_columns("Type", "Property Name")
+        with HorizontalScroll():
+            with TabbedContent("Attributes", "Metadata"):
+                yield self._prim_attributes_table
+                yield Placeholder("Placeholder Metadata table")
+            yield Placeholder("Placeholder Value view widget")
         yield Footer()
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
@@ -101,11 +107,10 @@ class UsdInspectApp(App):
             self._prim_attributes_table.add_row(
                 attribute.GetTypeName(),
                 attribute.GetName(),
-                attribute.Get(),
             )
 
 
 if __name__ == "__main__":
-    stage = Stage.Open("/home/jaime/Downloads/Kitchen_set/Kitchen_set.usd")
+    stage = Stage.Open("/Users/yunzhang/Downloads/Kitchen_set/Kitchen_set.usd")
     app = UsdInspectApp(stage)
     app.run()
