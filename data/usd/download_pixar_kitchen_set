@@ -1,0 +1,3 @@
+curl https://openusd.org/files/Kitchen_set.zip --output Kitchen_set.zip
+unzip Kitchen_set.zip
+rm Kitchen_set.zip
