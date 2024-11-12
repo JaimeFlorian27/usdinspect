@@ -3,11 +3,12 @@
 from pathlib import Path
 
 from pxr.Usd import Stage
+from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import HorizontalScroll
-from textual.widgets import DataTable, Footer, Header, Placeholder, TabbedContent, Tree
+from textual.widgets import Footer, Header, TabbedContent, Tree
 
-from .widgets import StageTree
+from .widgets import AttributeValuesTable, PrimAttributesTable, StageTree
 
 
 class UsdInspectApp(App):
@@ -25,7 +26,10 @@ class UsdInspectApp(App):
         super().__init__()
         self._stage = stage
         self._stage_tree = StageTree("/")
-        self._prim_attributes_table = DataTable()
+        self._prim_attributes_table = PrimAttributesTable()
+        self._prim_attribute_values_table = AttributeValuesTable(
+            id="attribute_values_table",
+        )
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -36,19 +40,18 @@ class UsdInspectApp(App):
         """
         yield Header()
         self._stage_tree.populate(self._stage)
+        self._stage_tree.focus()
         with HorizontalScroll():
             yield self._stage_tree
-            yield Placeholder("Placeholder Composition view")
 
-        self._prim_attributes_table.add_columns("Type", "Property Name")
         with HorizontalScroll():
-            with TabbedContent("Attributes", "Metadata"):
+            with TabbedContent("Attributes"):
                 yield self._prim_attributes_table
-                yield Placeholder("Placeholder Metadata table")
-            yield Placeholder("Placeholder Value view widget")
+            yield self._prim_attribute_values_table
         yield Footer()
 
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+    @on(StageTree.NodeHighlighted, "StageTree")
+    def stage_tree_node_highlighted(self, event: StageTree.NodeHighlighted) -> None:
         """Handle the selection of a prim node in the tree.
 
         populate any widgets whose data depend on the currently selected prim.
@@ -58,9 +61,24 @@ class UsdInspectApp(App):
             return
         prim = self._stage.GetPrimAtPath(event.node.data)
 
-        self._prim_attributes_table.clear()
-        for attribute in prim.GetAttributes():
-            self._prim_attributes_table.add_row(
-                attribute.GetTypeName(),
-                attribute.GetName(),
-            )
+        # Update the properties table
+        self._prim_attributes_table.populate(prim)
+
+    @on(PrimAttributesTable.RowHighlighted, "PrimAttributesTable")
+    def populate_attribute_values(
+        self,
+        event: PrimAttributesTable.RowHighlighted,
+    ) -> None:
+        """Handle the selection of a prim attribute.
+
+        populate any widgets whose data depend on the currently selected prim.
+
+        """
+        selected_prim_node = self._stage_tree.cursor_node
+        if not selected_prim_node:
+            return
+
+        prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
+        attribute = prim.GetAttribute(str(event.row_key.value))
+
+        self._prim_attribute_values_table.populate(attribute)
