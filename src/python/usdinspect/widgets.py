@@ -3,7 +3,8 @@
 from typing import TYPE_CHECKING
 
 from pxr.Usd import Prim, Stage
-from textual.widgets import Tree
+from textual.app import ComposeResult
+from textual.widgets import DataTable, Tree
 
 if TYPE_CHECKING:
     from textual.widgets.tree import TreeNode
@@ -49,3 +50,26 @@ class StageTree(Tree):
                 prim_to_node[prim] = current_node
             else:
                 current_node = parent_node.add_leaf(prim.GetName(), prim.GetPath())
+
+
+class PrimPropertiesTable(DataTable):
+    """Widget that displays the properties of a UsdPrim in a table view."""
+
+    def compose(self) -> ComposeResult:
+        """Compose the widget.
+
+        Returns:
+            ComposeResult of the widget.
+
+        """
+        self.add_columns("Type", "Property Name")
+        return super().compose()
+
+    def populate(self, prim: Prim) -> None:
+        """Populate the table with the data for the passed UsdPrim."""
+        self.clear()
+        for attribute in prim.GetAttributes():
+            self.add_row(
+                attribute.GetTypeName(),
+                attribute.GetName(),
+            )
