@@ -1,6 +1,10 @@
-# usd-inspect
+# usdinspect
 
-**usd-inspect** is a command-line interface (CLI) tool designed to replicate the inspection functionality of **usdview** using **Textual**, a Python library for creating terminal-based user interfaces. This tool allows users to explore USD (Universal Scene Description) files, providing a lightweight, accessible alternative to usdview with a focus on terminal usage.
+**usdinspect** is a command-line interface (CLI) tool designed to replicate the inspection functionality of **usdview** using **Textual**, a Python library for creating terminal-based user interfaces. This tool allows users to explore USD (Universal Scene Description) files, providing a lightweight, accessible alternative to usdview with a focus on terminal usage.
+
+> [!WARNING]  
+> This repository is in active development. Expect frequent breaking changes.
+
 
 ## Features
 
