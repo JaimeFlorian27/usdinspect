@@ -52,8 +52,8 @@ class StageTree(Tree):
                 current_node = parent_node.add_leaf(prim.GetName(), prim.GetPath())
 
 
-class PrimPropertiesTable(DataTable):
-    """Widget that displays the properties of a UsdPrim in a table view."""
+class PrimAttributesTable(DataTable):
+    """Widget that displays the attributes of a UsdPrim in a table view."""
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -63,7 +63,7 @@ class PrimPropertiesTable(DataTable):
 
         """
         self.cursor_type = "row"
-        self.add_columns("Type", "Property Name")
+        self.add_columns("Type", "Attribute Name")
         return super().compose()
 
     def populate(self, prim: Prim) -> None:
@@ -77,8 +77,8 @@ class PrimPropertiesTable(DataTable):
             )
 
 
-class PropertyValuesTable(DataTable):
-    """Widget that displays the values of a UsdProperty in a table view."""
+class AttributeValuesTable(DataTable):
+    """Widget that displays the values of an attribute in a table view."""
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -87,12 +87,24 @@ class PropertyValuesTable(DataTable):
             ComposeResult of the widget.
 
         """
-        self.add_columns("Time sample", "Value")
+        self.add_columns("Index", "Value")
+        self.cursor_type = "row"
         return super().compose()
 
-    def populate(self, prim_property: Attribute) -> None:
-        """Populate the table with the data for the passed UsdPrim."""
+    def populate(self, attribute: Attribute) -> None:
+        """Populate the table with value of an attribute."""
         self.clear()
 
-        # TODO: Handle time sampled attributes.
-        self.add_row("None", prim_property.Get())
+        value = attribute.Get()
+        if not value:
+            return
+
+        # Check if the value of the attribute is an array.
+        type_name = attribute.GetTypeName()
+
+        if type_name.isArray:
+            for index, item in enumerate(value):
+                self.add_row(index, item)
+            return
+
+        self.add_row("", value)
