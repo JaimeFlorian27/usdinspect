@@ -7,7 +7,7 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalScroll
 from textual.widgets import Footer, Header, Placeholder, TabbedContent, Tree
 
-from .widgets import PrimPropertiesTable, StageTree
+from .widgets import PrimPropertiesTable, PropertyValuesTable, StageTree
 
 
 class UsdInspectApp(App):
@@ -25,7 +25,8 @@ class UsdInspectApp(App):
         super().__init__()
         self._stage = stage
         self._stage_tree = StageTree("/")
-        self._properties_table = PrimPropertiesTable()
+        self._prim_properties_table = PrimPropertiesTable()
+        self._property_values_table = PropertyValuesTable()
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -43,9 +44,9 @@ class UsdInspectApp(App):
 
         with HorizontalScroll():
             with TabbedContent("Attributes", "Metadata"):
-                yield self._properties_table
+                yield self._prim_properties_table
                 yield Placeholder("Placeholder Metadata table")
-            yield Placeholder("Placeholder Value view widget")
+            yield self._property_values_table
         yield Footer()
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
@@ -59,4 +60,14 @@ class UsdInspectApp(App):
         prim = self._stage.GetPrimAtPath(event.node.data)
 
         # Update the properties table
-        self._properties_table.populate(prim)
+        self._prim_properties_table.populate(prim)
+
+    def on_property_selected(self, event: PrimPropertiesTable.RowSelected) -> None:
+        selected_prim_node = self._stage_tree.cursor_node
+        if not selected_prim_node:
+            return
+        prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
+        self._property_values_table.add_row(
+            "None",
+            prim.GetAttribute(str(event.row_key)).Get(),
+        )

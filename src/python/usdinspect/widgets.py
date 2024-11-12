@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from pxr.Usd import Prim, Stage
+from pxr.Usd import Attribute, Prim, Stage
 from textual.app import ComposeResult
 from textual.widgets import DataTable, Tree
 
@@ -62,6 +62,7 @@ class PrimPropertiesTable(DataTable):
             ComposeResult of the widget.
 
         """
+        self.cursor_type = "row"
         self.add_columns("Type", "Property Name")
         return super().compose()
 
@@ -72,4 +73,26 @@ class PrimPropertiesTable(DataTable):
             self.add_row(
                 attribute.GetTypeName(),
                 attribute.GetName(),
+                key=attribute.GetName(),
             )
+
+
+class PropertyValuesTable(DataTable):
+    """Widget that displays the values of a UsdProperty in a table view."""
+
+    def compose(self) -> ComposeResult:
+        """Compose the widget.
+
+        Returns:
+            ComposeResult of the widget.
+
+        """
+        self.add_columns("Time sample", "Value")
+        return super().compose()
+
+    def populate(self, prim_property: Attribute) -> None:
+        """Populate the table with the data for the passed UsdPrim."""
+        self.clear()
+
+        # TODO: Handle time sampled attributes.
+        self.add_row("None", prim_property.Get())
