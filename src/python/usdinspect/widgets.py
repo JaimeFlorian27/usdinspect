@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from pxr.Usd import Attribute, Prim, Stage
 from textual.app import ComposeResult
 from textual.reactive import reactive
-from textual.widgets import DataTable, Tree
+from textual.widgets import DataTable, Label, ListItem, ListView, Tree
 
 if TYPE_CHECKING:
     from textual.widgets.tree import TreeNode
@@ -19,7 +19,7 @@ class StageTree(Tree):
     def watch_stage(self) -> None:
         """Populate the tree hierarchy with prims.
 
-        This method iterates throug a stage using its Traverse method.
+        This method iterates through a stage using its Traverse method.
 
         Args:
         stage: USD Stage.
@@ -56,6 +56,28 @@ class StageTree(Tree):
                 prim_to_node[prim] = current_node
             else:
                 current_node = parent_node.add_leaf(prim.GetName(), prim.GetPath())
+
+
+class PrimCompositionList(ListView):
+    """Tree widget that presents the opinion composition of a USD Prim."""
+
+    prim: reactive[Prim | None] = reactive(None)
+
+    def watch_prim(self) -> None:
+        """Populate list with all the layers that have a spec on the prim.
+
+        Args:
+        prim: USD Prim.
+
+        """
+        if not self.prim:
+            return
+
+        self.clear()
+        prim_stack = self.prim.GetPrimStack()
+        self.append(ListItem(Label("Composed")))
+        for spec in prim_stack:
+            self.append(ListItem(Label(spec.layer.GetDisplayName())))
 
 
 class PrimAttributesTable(DataTable):

@@ -8,7 +8,12 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalScroll
 from textual.widgets import Footer, Header, TabbedContent
 
-from .widgets import AttributeValuesTable, PrimAttributesTable, StageTree
+from .widgets import (
+    AttributeValuesTable,
+    PrimAttributesTable,
+    PrimCompositionList,
+    StageTree,
+)
 
 
 class UsdInspectApp(App):
@@ -25,11 +30,10 @@ class UsdInspectApp(App):
         """
         super().__init__()
         self._stage = stage
-        self._stage_tree = StageTree("/")
+        self._stage_tree = StageTree("Root", "/")
         self._prim_attributes_table = PrimAttributesTable()
-        self._prim_attribute_values_table = AttributeValuesTable(
-            id="attribute_values_table",
-        )
+        self._prim_attribute_values_table = AttributeValuesTable()
+        self._prim_composition_list = PrimCompositionList()
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -43,6 +47,7 @@ class UsdInspectApp(App):
         self._stage_tree.focus()
         with HorizontalScroll():
             yield self._stage_tree
+            yield self._prim_composition_list
 
         with HorizontalScroll():
             with TabbedContent("Attributes"):
@@ -61,8 +66,9 @@ class UsdInspectApp(App):
             return
         prim = self._stage.GetPrimAtPath(event.node.data)
 
-        # Update the properties table
+        # Update the widgets that depend on the selected prim.
         self._prim_attributes_table.prim = prim
+        self._prim_composition_list.prim = prim
 
     @on(PrimAttributesTable.RowHighlighted, "PrimAttributesTable")
     def populate_attribute_values(
