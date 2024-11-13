@@ -1,12 +1,24 @@
-DataTable{
+AttributeValuesTable{
+  border: round #5b15bd;
+  height: 1fr;
+}
+
+PrimCompositionList{
+  border: round #5b15bd;
   height: 1fr;
 }
 
 TabbedContent{
+  border: round #5b15bd;
   width: 1fr;
+  height: 1fr;
   }
 
 Placeholder{
   height: 1fr;
   width: 1fr;
 }
+
+StageTree{
+  border: round #5b15bd;
+  }
