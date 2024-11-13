@@ -6,7 +6,7 @@ from pxr.Usd import Stage
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import HorizontalScroll
-from textual.widgets import Footer, Header, TabbedContent, Tree
+from textual.widgets import Footer, Header, TabbedContent
 
 from .widgets import AttributeValuesTable, PrimAttributesTable, StageTree
 
@@ -39,7 +39,7 @@ class UsdInspectApp(App):
 
         """
         yield Header()
-        self._stage_tree.populate(self._stage)
+        self._stage_tree.stage = self._stage
         self._stage_tree.focus()
         with HorizontalScroll():
             yield self._stage_tree
@@ -62,7 +62,7 @@ class UsdInspectApp(App):
         prim = self._stage.GetPrimAtPath(event.node.data)
 
         # Update the properties table
-        self._prim_attributes_table.populate(prim)
+        self._prim_attributes_table.prim = prim
 
     @on(PrimAttributesTable.RowHighlighted, "PrimAttributesTable")
     def populate_attribute_values(
@@ -81,4 +81,4 @@ class UsdInspectApp(App):
         prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
         attribute = prim.GetAttribute(str(event.row_key.value))
 
-        self._prim_attribute_values_table.populate(attribute)
+        self._prim_attribute_values_table.attribute = attribute

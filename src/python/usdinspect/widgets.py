@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from pxr.Usd import Attribute, Prim, Stage
 from textual.app import ComposeResult
+from textual.reactive import reactive
 from textual.widgets import DataTable, Tree
 
 if TYPE_CHECKING:
@@ -13,7 +14,9 @@ if TYPE_CHECKING:
 class StageTree(Tree):
     """Tree widget that presents a USD Stage."""
 
-    def populate(self, stage: Stage) -> None:
+    stage: reactive[Stage | None] = reactive(None)
+
+    def watch_stage(self) -> None:
         """Populate the tree hierarchy with prims.
 
         This method iterates throug a stage using its Traverse method.
@@ -22,17 +25,20 @@ class StageTree(Tree):
         stage: USD Stage.
 
         """
+        if not self.stage:
+            return
+
         self.root.expand()
 
         prim_to_node: dict[Prim, TreeNode] = {}
-        root_prim = stage.GetPseudoRoot()
+        root_prim = self.stage.GetPseudoRoot()
 
         # This dict will store a mapping between the prims and their respective node
         # in the tree, this is useful for constructing the hierarchy while traversing
         # the stage.
         prim_to_node[root_prim] = self.root
 
-        for prim in stage.Traverse():
+        for prim in self.stage.Traverse():
             if prim == root_prim:
                 continue
 
@@ -55,6 +61,8 @@ class StageTree(Tree):
 class PrimAttributesTable(DataTable):
     """Widget that displays the attributes of a UsdPrim in a table view."""
 
+    prim: reactive[Prim | None] = reactive(None)
+
     def compose(self) -> ComposeResult:
         """Compose the widget.
 
@@ -66,19 +74,25 @@ class PrimAttributesTable(DataTable):
         self.add_columns("Type", "Attribute Name")
         return super().compose()
 
-    def populate(self, prim: Prim) -> None:
+    def watch_prim(self) -> None:
         """Populate the table with the data for the passed UsdPrim."""
+        if not self.prim:
+            return
+
         self.clear()
-        for attribute in prim.GetAttributes():
+        for attribute in self.prim.GetAttributes():
             self.add_row(
                 attribute.GetTypeName(),
                 attribute.GetName(),
                 key=attribute.GetName(),
             )
+        return
 
 
 class AttributeValuesTable(DataTable):
     """Widget that displays the values of an attribute in a table view."""
+
+    attribute: reactive[Attribute | None] = reactive(None)
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -91,16 +105,19 @@ class AttributeValuesTable(DataTable):
         self.cursor_type = "row"
         return super().compose()
 
-    def populate(self, attribute: Attribute) -> None:
+    def watch_attribute(self) -> None:
         """Populate the table with value of an attribute."""
+        if not self.attribute:
+            return
+
         self.clear()
 
-        value = attribute.Get()
+        value = self.attribute.Get()
         if not value:
             return
 
         # Check if the value of the attribute is an array.
-        type_name = attribute.GetTypeName()
+        type_name = self.attribute.GetTypeName()
 
         if type_name.isArray:
             for index, item in enumerate(value):
