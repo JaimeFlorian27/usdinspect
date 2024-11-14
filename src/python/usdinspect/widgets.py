@@ -2,9 +2,11 @@
 
 from typing import TYPE_CHECKING
 
+from pxr.Sdf import AttributeSpec, PrimSpec
 from pxr.Usd import Attribute, Prim, Stage
 from textual.app import ComposeResult
 from textual.reactive import reactive
+from textual.widget import Widget
 from textual.widgets import DataTable, Label, ListItem, ListView, Tree
 
 if TYPE_CHECKING:
@@ -59,13 +61,32 @@ class StageTree(Tree):
                 current_node = parent_node.add_leaf(prim.GetName(), prim.GetPath())
 
 
+class PrimLayerListItem(ListItem):
+    """..."""
+
+    def __init__(self, *children: Widget, prim_spec: PrimSpec | None = None) -> None:
+        """..."""
+        super().__init__(*children)
+        self.prim_spec = prim_spec
+
+
 class PrimCompositionList(ListView):
     """Tree widget that presents the opinion composition of a USD Prim."""
 
     BORDER_TITLE = "Prim Layers List"
     prim: reactive[Prim | None] = reactive(None)
 
-    def watch_prim(self) -> None:
+    class Highlighted(ListView.Highlighted):
+        """Posted when the highlighted item changes."""
+
+        def __init__(self, list_view: ListView, item: PrimLayerListItem | None) -> None:
+            """Construct the message."""
+            super().__init__(list_view, item)
+            self.prim_spec: PrimSpec | None = None
+            if item:
+                self.prim_spec = item.prim_spec
+
+    async def watch_prim(self) -> None:
         """Populate list with all the layers that have a spec on the prim.
 
         Args:
@@ -75,17 +96,22 @@ class PrimCompositionList(ListView):
         if not self.prim:
             return
 
-        self.clear()
+        await self.clear()
         prim_stack = self.prim.GetPrimStack()
-        self.append(ListItem(Label("Composed")))
+        self.append(PrimLayerListItem(Label("Composed")))
         for spec in prim_stack:
-            self.append(ListItem(Label(spec.layer.GetDisplayName())))
+            self.append(
+                PrimLayerListItem(Label(spec.layer.GetDisplayName()), prim_spec=spec),
+            )
+        # Always select the first item as it is the composed stage.
+        self.index = 0
 
 
 class PrimAttributesTable(DataTable):
     """Widget that displays the attributes of a UsdPrim in a table view."""
 
-    prim: reactive[Prim | None] = reactive(None)
+    prim: reactive[Prim | None] = reactive(None, always_update=True)
+    prim_spec: reactive[PrimSpec | None] = reactive(None, always_update=True)
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -99,7 +125,7 @@ class PrimAttributesTable(DataTable):
         return super().compose()
 
     def watch_prim(self) -> None:
-        """Populate the table with the data for the passed UsdPrim."""
+        """Populate the table with the attributes of the current Prim."""
         if not self.prim:
             return
 
@@ -109,6 +135,21 @@ class PrimAttributesTable(DataTable):
                 attribute.GetTypeName(),
                 attribute.GetName(),
                 key=attribute.GetName(),
+            )
+        return
+
+    def watch_prim_spec(self) -> None:
+        """Populate the table with the attributes of the current PrimSpec."""
+        if not self.prim_spec:
+            return
+
+        self.clear()
+        for attribute in self.prim_spec.attributes:
+            attribute: AttributeSpec
+            self.add_row(
+                attribute.typeName,
+                attribute.name,
+                key=attribute.name,
             )
         return
 
