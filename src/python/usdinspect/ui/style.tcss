@@ -1,24 +1,32 @@
+$border_title_color: white;
+$border_color: #5b15bd;
+
 AttributeValuesTable{
-  border: round #5b15bd;
+  border: round $border_color;
+  border-title-color: $border_title_color;
   height: 1fr;
 }
 
 PrimCompositionList{
-  border: round #5b15bd;
+  border: round $border_color;
+  border-title-color: $border_title_color;
   height: 1fr;
 }
 
 TabbedContent{
-  border: round #5b15bd;
+  border: round $border_color;
+  border-title-color: $border_title_color;
   width: 1fr;
   height: 1fr;
   }
 
 Placeholder{
+  border-title-color: $border_title_color;
   height: 1fr;
   width: 1fr;
 }
 
 StageTree{
-  border: round #5b15bd;
+  border: round $border_color;
+  border-title-color: $border_title_color;
   }
