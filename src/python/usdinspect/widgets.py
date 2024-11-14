@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class StageTree(Tree):
     """Tree widget that presents a USD Stage."""
 
+    BORDER_TITLE = "Stage Tree"
     stage: reactive[Stage | None] = reactive(None)
 
     def watch_stage(self) -> None:
@@ -61,6 +62,7 @@ class StageTree(Tree):
 class PrimCompositionList(ListView):
     """Tree widget that presents the opinion composition of a USD Prim."""
 
+    BORDER_TITLE = "Prim Layers List"
     prim: reactive[Prim | None] = reactive(None)
 
     def watch_prim(self) -> None:
@@ -113,6 +115,8 @@ class PrimAttributesTable(DataTable):
 
 class AttributeValuesTable(DataTable):
     """Widget that displays the values of an attribute in a table view."""
+
+    BORDER_TITLE = "Values"
 
     attribute: reactive[Attribute | None] = reactive(None)
 
