@@ -50,7 +50,8 @@ class UsdInspectApp(App):
             yield self._prim_composition_list
 
         with HorizontalScroll():
-            with TabbedContent("Attributes"):
+            with TabbedContent("Attributes") as tabs:
+                tabs.border_title = "Prim Data"
                 yield self._prim_attributes_table
             yield self._prim_attribute_values_table
         yield Footer()
