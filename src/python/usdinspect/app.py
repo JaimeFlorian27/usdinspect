@@ -1,6 +1,7 @@
 """Module that defines the application class."""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pxr.Usd import Stage
 from textual import on
@@ -14,6 +15,9 @@ from .widgets import (
     PrimCompositionList,
     StageTree,
 )
+
+if TYPE_CHECKING:
+    from pxr.Sdf import PrimSpec
 
 
 class UsdInspectApp(App):
@@ -89,3 +93,28 @@ class UsdInspectApp(App):
         attribute = prim.GetAttribute(str(event.row_key.value))
 
         self._prim_attribute_values_table.attribute = attribute
+
+    @on(PrimCompositionList.Highlighted, "PrimCompositionList")
+    def layer_highlighted(
+        self,
+        event: PrimCompositionList.Highlighted,
+    ) -> None:
+        """Handle the selection of a prim attribute.
+
+        populate any widgets whose data depend on the currently selected prim.
+
+        """
+        prim_spec: PrimSpec | None = event.prim_spec
+
+        # If no prim spec assume that we are targeting the composed prim.
+        if not prim_spec:
+            selected_prim_node = self._stage_tree.cursor_node
+            if not selected_prim_node:
+                return
+
+            selected_prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
+            self._prim_attributes_table.prim = selected_prim
+            return
+
+        self._prim_attributes_table.prim_spec = prim_spec
+        return
