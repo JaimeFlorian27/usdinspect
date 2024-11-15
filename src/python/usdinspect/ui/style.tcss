@@ -7,7 +7,7 @@ AttributeValuesTable{
   height: 1fr;
 }
 
-PrimCompositionList{
+PrimLayerStackTable{
   border: round $border_color;
   border-title-color: $border_title_color;
   height: 1fr;

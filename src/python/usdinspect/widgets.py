@@ -7,7 +7,7 @@ from pxr.Usd import Attribute, Prim, Stage
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import DataTable, Label, ListItem, ListView, Tree
+from textual.widgets import DataTable, ListItem, Tree
 
 if TYPE_CHECKING:
     from textual.widgets.tree import TreeNode
@@ -70,23 +70,24 @@ class PrimLayerListItem(ListItem):
         self.prim_spec = prim_spec
 
 
-class PrimCompositionList(ListView):
+class PrimLayerStackTable(DataTable):
     """Tree widget that presents the opinion composition of a USD Prim."""
 
-    BORDER_TITLE = "Prim Layers List"
+    BORDER_TITLE = "Prim Layer Stack"
     prim: reactive[Prim | None] = reactive(None)
 
-    class Highlighted(ListView.Highlighted):
-        """Posted when the highlighted item changes."""
+    def compose(self) -> ComposeResult:
+        """Override compose to add cursor type and default columns.
 
-        def __init__(self, list_view: ListView, item: PrimLayerListItem | None) -> None:
-            """Construct the message."""
-            super().__init__(list_view, item)
-            self.prim_spec: PrimSpec | None = None
-            if item:
-                self.prim_spec = item.prim_spec
+        Returns:
+            ComposeResult.
 
-    async def watch_prim(self) -> None:
+        """
+        self.cursor_type = "row"
+        self.add_columns("Layer", "Specifier")
+        return super().compose()
+
+    def watch_prim(self) -> None:
         """Populate list with all the layers that have a spec on the prim.
 
         Args:
@@ -96,12 +97,14 @@ class PrimCompositionList(ListView):
         if not self.prim:
             return
 
-        await self.clear()
+        self.clear()
         prim_stack = self.prim.GetPrimStack()
-        self.append(PrimLayerListItem(Label("Composed")))
+        self.add_row("Composed", "", key="composed")
         for spec in prim_stack:
-            self.append(
-                PrimLayerListItem(Label(spec.layer.GetDisplayName()), prim_spec=spec),
+            self.add_row(
+                spec.layer.GetDisplayName(),
+                spec.specifier.displayName,
+                key=f"{spec.layer.realPath}:{spec.path}",
             )
         # Always select the first item as it is the composed stage.
         self.index = 0

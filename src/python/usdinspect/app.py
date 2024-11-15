@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pxr.Sdf import Layer
 from pxr.Usd import Stage
 from textual import on
 from textual.app import App, ComposeResult
@@ -12,7 +13,7 @@ from textual.widgets import Footer, Header, TabbedContent
 from .widgets import (
     AttributeValuesTable,
     PrimAttributesTable,
-    PrimCompositionList,
+    PrimLayerStackTable,
     StageTree,
 )
 
@@ -37,7 +38,7 @@ class UsdInspectApp(App):
         self._stage_tree = StageTree("Root", "/")
         self._prim_attributes_table = PrimAttributesTable()
         self._prim_attribute_values_table = AttributeValuesTable()
-        self._prim_composition_list = PrimCompositionList()
+        self._prim_composition_list = PrimLayerStackTable()
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -64,7 +65,7 @@ class UsdInspectApp(App):
     def stage_tree_node_highlighted(self, event: StageTree.NodeHighlighted) -> None:
         """Handle the selection of a prim node in the tree.
 
-        populate any widgets whose data depend on the currently selected prim.
+        Populate any widgets whose data depend on the currently selected prim.
 
         """
         if not event.node.data:
@@ -82,7 +83,7 @@ class UsdInspectApp(App):
     ) -> None:
         """Handle the selection of a prim attribute.
 
-        populate any widgets whose data depend on the currently selected prim.
+        Populate any widgets whose data depend on the currently selected attribute.
 
         """
         selected_prim_node = self._stage_tree.cursor_node
@@ -94,20 +95,24 @@ class UsdInspectApp(App):
 
         self._prim_attribute_values_table.attribute = attribute
 
-    @on(PrimCompositionList.Highlighted, "PrimCompositionList")
+    @on(PrimLayerStackTable.RowHighlighted, "PrimLayerStackTable")
     def layer_highlighted(
         self,
-        event: PrimCompositionList.Highlighted,
+        event: PrimLayerStackTable.RowHighlighted,
     ) -> None:
         """Handle the selection of a prim attribute.
 
-        populate any widgets whose data depend on the currently selected prim.
+        Populate any widgets whose data depend on the currently selected layer.
 
         """
-        prim_spec: PrimSpec | None = event.prim_spec
+        row_key: str | None = event.row_key.value
+        if not row_key:
+            return
 
-        # If no prim spec assume that we are targeting the composed prim.
-        if not prim_spec:
+        # Handle composed case, get the currently selected prim and assign it to
+        # the attribute's table prim. I do this way as the reactive prim attribute
+        # will always update the attributes table when assigned.
+        if row_key == "composed":
             selected_prim_node = self._stage_tree.cursor_node
             if not selected_prim_node:
                 return
@@ -115,6 +120,13 @@ class UsdInspectApp(App):
             selected_prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
             self._prim_attributes_table.prim = selected_prim
             return
+
+        # Regular case, get the prim spec from the selected layer and assign it to the
+        # attributes table.
+        layer_path, prim_spec_path = row_key.split(":")
+        prim_spec: PrimSpec | None = Layer.FindOrOpen(layer_path).GetPrimAtPath(
+            prim_spec_path,
+        )
 
         self._prim_attributes_table.prim_spec = prim_spec
         return
