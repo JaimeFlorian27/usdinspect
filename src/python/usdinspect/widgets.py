@@ -70,8 +70,40 @@ class PrimLayerListItem(ListItem):
         self.prim_spec = prim_spec
 
 
+class PrimMetadataTable(DataTable):
+    """DataTable that represents the metadata of a Usd Prim."""
+
+    BORDER_TITLE = "Prim Layer Stack"
+    prim: reactive[Prim | None] = reactive(None)
+
+    def compose(self) -> ComposeResult:
+        """Override compose to add cursor type and default columns.
+
+        Returns:
+            ComposeResult.
+
+        """
+        self.cursor_type = "row"
+        self.add_columns("Field Name", "Value")
+        return super().compose()
+
+    def watch_prim(self) -> None:
+        """Populate table with the metadata of a prim.
+
+        Args:
+        prim: USD Prim.
+
+        """
+        if not self.prim:
+            return
+
+        self.clear()
+        for field, value in self.prim.GetAllMetadata().items():
+            self.add_row(field, value)
+
+
 class PrimLayerStackTable(DataTable):
-    """Tree widget that presents the opinion composition of a USD Prim."""
+    """DataTable that presents the layer stack of a USD Prim."""
 
     BORDER_TITLE = "Prim Layer Stack"
     prim: reactive[Prim | None] = reactive(None)
@@ -88,7 +120,7 @@ class PrimLayerStackTable(DataTable):
         return super().compose()
 
     def watch_prim(self) -> None:
-        """Populate list with all the layers that have a spec on the prim.
+        """Populate table with all the layers that have a spec on the prim.
 
         Args:
         prim: USD Prim.

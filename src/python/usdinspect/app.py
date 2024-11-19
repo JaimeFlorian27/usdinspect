@@ -14,6 +14,7 @@ from .widgets import (
     AttributeValuesTable,
     PrimAttributesTable,
     PrimLayerStackTable,
+    PrimMetadataTable,
     StageTree,
 )
 
@@ -39,6 +40,7 @@ class UsdInspectApp(App):
         self._prim_attributes_table = PrimAttributesTable()
         self._prim_attribute_values_table = AttributeValuesTable()
         self._prim_composition_list = PrimLayerStackTable()
+        self._prim_metadata_table = PrimMetadataTable()
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -55,9 +57,10 @@ class UsdInspectApp(App):
             yield self._prim_composition_list
 
         with HorizontalScroll():
-            with TabbedContent("Attributes") as tabs:
+            with TabbedContent("Attributes", "Metadata") as tabs:
                 tabs.border_title = "Prim Data"
                 yield self._prim_attributes_table
+                yield self._prim_metadata_table
             yield self._prim_attribute_values_table
         yield Footer()
 
@@ -75,6 +78,7 @@ class UsdInspectApp(App):
         # Update the widgets that depend on the selected prim.
         self._prim_attributes_table.prim = prim
         self._prim_composition_list.prim = prim
+        self._prim_metadata_table.prim = prim
 
     @on(PrimAttributesTable.RowHighlighted, "PrimAttributesTable")
     def populate_attribute_values(
