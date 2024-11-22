@@ -7,7 +7,7 @@ authors = [{ name = "Jaime Florian Urueta", email = "jaimeflorian27@gmail.com" }
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
-"textual==0.85.*",
+"textual==0.86.*",
 "usd-core==24.*"
 ]
 
@@ -19,7 +19,8 @@ dev = [
     "ruff",
     "pyright",
     "pytest",
-    "types-usd"
+    "types-usd",
+    "textual-dev==0.86.*"
 ]
 
 [build-system]
