@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from pxr.Sdf import AttributeSpec, PrimSpec
-from pxr.Usd import Attribute, Prim, Stage
+from pxr.Usd import Attribute, CompositionArc, Prim, PrimCompositionQuery, Stage
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -116,7 +116,7 @@ class PrimLayerStackTable(DataTable):
 
         """
         self.cursor_type = "row"
-        self.add_columns("Layer", "Specifier")
+        self.add_columns("Layer", "Composition Arc")
         return super().compose()
 
     def watch_prim(self) -> None:
@@ -130,15 +130,45 @@ class PrimLayerStackTable(DataTable):
             return
 
         self.clear()
-        prim_stack = self.prim.GetPrimStack()
         self.add_row("Composed", "", key="composed")
+
+        composition_arcs: list[CompositionArc] = PrimCompositionQuery(
+            self.prim,
+        ).GetCompositionArcs()
+
+        prim_stack = self.prim.GetPrimStack()
+
+        """
+        Use the two-pointer method to match layers in the prim stack with the
+        composition arc that is introducing them. Both lists are ordered from
+        strongest to weakest opinion which allows this method to work.
+
+        I need to do it this way as the composition query does not show all the
+        layers that affect a prim, it doesn't retrieve sublayers specifically, this is
+        because sublayers are not a composition arc that target prims such as payloads
+        or inherits, sublayers target a stage or layer.
+
+        We should be able to safely assume that a layer that:
+        - Has a spec in the prim.
+        - Is not present in the composition arcs list.
+        Is a sublayer.
+        """
+        current_arc_index = 0
         for spec in prim_stack:
+            layer = spec.layer
+            composition_arc_name = "Sublayer"
+
+            if current_arc_index < len(composition_arcs):
+                current_arc = composition_arcs[current_arc_index]
+                if layer == current_arc.GetTargetLayer():
+                    composition_arc_name = current_arc.GetArcType().displayName
+                    current_arc_index += 1
+
             self.add_row(
-                spec.layer.GetDisplayName(),
-                spec.specifier.displayName,
-                key=f"{spec.layer.realPath}:{spec.path}",
+                layer.GetDisplayName(),
+                composition_arc_name,
+                key=f"{layer.identifier}|{spec.path}",
             )
-        # Always select the first item as it is the composed stage.
         self.index = 0
 
 

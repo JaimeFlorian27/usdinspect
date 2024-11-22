@@ -127,7 +127,7 @@ class UsdInspectApp(App):
 
         # Regular case, get the prim spec from the selected layer and assign it to the
         # attributes table.
-        layer_path, prim_spec_path = row_key.split(":")
+        layer_path, prim_spec_path = row_key.split("|")
         prim_spec: PrimSpec | None = Layer.FindOrOpen(layer_path).GetPrimAtPath(
             prim_spec_path,
         )
