@@ -162,4 +162,4 @@ cython_debug/
 #.idea/
 
 # Usd data
-/data/usd/*/
+/data/usd/Kitchen_set/

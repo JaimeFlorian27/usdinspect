@@ -1,0 +1,14 @@
+#usda 1.0
+(
+    endTimeCode = 30
+    framesPerSecond = 24
+    metersPerUnit = 1
+    startTimeCode = 30
+    subLayers = [
+        @./sphere_transform.usd:SDF_FORMAT_ARGS:format=usda@,
+        @./sphere.usd:SDF_FORMAT_ARGS:format=usda@
+    ]
+    timeCodesPerSecond = 24
+    upAxis = "Y"
+)
+
