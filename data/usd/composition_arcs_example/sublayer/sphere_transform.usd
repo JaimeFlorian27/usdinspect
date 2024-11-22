@@ -1,0 +1,14 @@
+#usda 1.0
+(
+    framesPerSecond = 24
+    metersPerUnit = 1
+    timeCodesPerSecond = 24
+    upAxis = "Y"
+)
+
+over "sphere"
+{
+    matrix4d xformOp:transform:transform1 = ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0.8757998943328857, 2.6309380531311035, 5.8091490268707275, 1) )
+    uniform token[] xformOpOrder = ["xformOp:transform", "xformOp:transform:transform1"]
+}
+
