@@ -36,10 +36,12 @@ class UsdInspectApp(App):
         """
         super().__init__()
         self._stage = stage
-        self._stage_tree = StageTree("Root", "/")
+        self._stage_tree = StageTree("Root", "/", classes="bordered_widget")
+        self._prim_composition_list = PrimLayerStackTable(classes="bordered_widget")
         self._prim_attributes_table = PrimAttributesTable()
-        self._prim_attribute_values_table = AttributeValuesTable()
-        self._prim_composition_list = PrimLayerStackTable()
+        self._prim_attribute_values_table = AttributeValuesTable(
+            classes="bordered_widget",
+        )
         self._prim_metadata_table = PrimMetadataTable()
 
     def compose(self) -> ComposeResult:
@@ -56,8 +58,10 @@ class UsdInspectApp(App):
             yield self._stage_tree
             yield self._prim_composition_list
 
-        with HorizontalScroll():
-            with TabbedContent("Attributes", "Metadata") as tabs:
+        with HorizontalScroll(can_focus=False):
+            with TabbedContent(
+                "Attributes", "Metadata", classes="bordered_widget"
+            ) as tabs:
                 tabs.border_title = "Prim Data"
                 yield self._prim_attributes_table
                 yield self._prim_metadata_table

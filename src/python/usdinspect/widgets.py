@@ -73,7 +73,6 @@ class PrimLayerListItem(ListItem):
 class PrimMetadataTable(DataTable):
     """DataTable that represents the metadata of a Usd Prim."""
 
-    BORDER_TITLE = "Prim Layer Stack"
     prim: reactive[Prim | None] = reactive(None)
 
     def compose(self) -> ComposeResult:

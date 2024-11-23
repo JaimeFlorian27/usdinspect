@@ -1,32 +1,26 @@
-$border_title_color: white;
-$border_color: #5b15bd;
+$border_title_color: $text-primary;
+$border_hover_color: $primary;
+$border_focus_color: $accent;
 
-AttributeValuesTable{
-  border: round $border_color;
+.bordered_widget{
+  border: round $secondary;
   border-title-color: $border_title_color;
-  height: 1fr;
-}
-
-PrimLayerStackTable{
-  border: round $border_color;
-  border-title-color: $border_title_color;
-  height: 1fr;
-}
-
-TabbedContent{
-  border: round $border_color;
-  border-title-color: $border_title_color;
-  width: 1fr;
   height: 1fr;
   }
 
-Placeholder{
-  border-title-color: $border_title_color;
-  height: 1fr;
-  width: 1fr;
+.bordered_widget:focus{
+  border: round $border_focus_color;
 }
 
-StageTree{
-  border: round $border_color;
-  border-title-color: $border_title_color;
+.bordered_widget:hover{
+  border: round $border_hover_color;
+}
+
+.bordered_widget:hover:focus{
+  border: round $border_focus_color;
+}
+
+TabbedContent{
+  width: 1fr;
+  height: 1fr;
   }
