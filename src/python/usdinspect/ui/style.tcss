@@ -24,3 +24,7 @@ TabbedContent{
   width: 1fr;
   height: 1fr;
   }
+
+PrimPropertiesTable {
+  height: 1fr;
+  }

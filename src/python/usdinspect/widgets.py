@@ -2,8 +2,9 @@
 
 from typing import TYPE_CHECKING
 
-from pxr.Sdf import AttributeSpec, PrimSpec
-from pxr.Usd import Attribute, CompositionArc, Prim, PrimCompositionQuery, Stage
+from pxr import Sdf, Usd
+from pxr.Sdf import PrimSpec
+from pxr.Usd import CompositionArc, Prim, PrimCompositionQuery, Stage
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -171,8 +172,8 @@ class PrimLayerStackTable(DataTable):
         self.index = 0
 
 
-class PrimAttributesTable(DataTable):
-    """Widget that displays the attributes of a UsdPrim in a table view."""
+class PrimPropertiesTable(DataTable):
+    """Widget that displays the properties of a UsdPrim in a table view."""
 
     prim: reactive[Prim | None] = reactive(None, always_update=True)
     prim_spec: reactive[PrimSpec | None] = reactive(None, always_update=True)
@@ -185,45 +186,63 @@ class PrimAttributesTable(DataTable):
 
         """
         self.cursor_type = "row"
-        self.add_columns("Type", "Attribute Name")
+        self.add_columns("Type", "Property", "Value Type")
         return super().compose()
 
     def watch_prim(self) -> None:
-        """Populate the table with the attributes of the current Prim."""
+        """Populate the table with the properties of the current Prim."""
         if not self.prim:
             return
 
         self.clear()
-        for attribute in self.prim.GetAttributes():
-            self.add_row(
-                attribute.GetTypeName(),
-                attribute.GetName(),
-                key=attribute.GetName(),
-            )
+        # item name as prop, property would shadow the python built-in.
+        for prop in self.prim.GetProperties():
+            if isinstance(prop, Usd.Attribute):
+                self.add_row(
+                    "Attr",
+                    prop.GetName(),
+                    prop.GetTypeName(),
+                    key=prop.GetName(),
+                )
+            if isinstance(prop, Usd.Relationship):
+                self.add_row(
+                    "Rel",
+                    prop.GetName(),
+                    "",
+                    key=prop.GetName(),
+                )
         return
 
     def watch_prim_spec(self) -> None:
-        """Populate the table with the attributes of the current PrimSpec."""
+        """Populate the table with the properties of the current PrimSpec."""
         if not self.prim_spec:
             return
 
         self.clear()
-        for attribute in self.prim_spec.attributes:
-            attribute: AttributeSpec
-            self.add_row(
-                attribute.typeName,
-                attribute.name,
-                key=attribute.name,
-            )
+        for prop_spec in self.prim_spec.properties:
+            if isinstance(prop_spec, Sdf.AttributeSpec):
+                self.add_row(
+                    "Attr",
+                    prop_spec.name,
+                    prop_spec.typeName,
+                    key=prop_spec.name,
+                )
+            if isinstance(prop_spec, Sdf.RelationshipSpec):
+                self.add_row(
+                    "Rel",
+                    prop_spec.name,
+                    "",
+                    key=prop_spec.name,
+                )
         return
 
 
-class AttributeValuesTable(DataTable):
-    """Widget that displays the values of an attribute in a table view."""
+class PropertyValuesTable(DataTable):
+    """Widget that displays the values of a property in a table view."""
 
     BORDER_TITLE = "Values"
 
-    attribute: reactive[Attribute | None] = reactive(None)
+    property: reactive[Usd.Property | None] = reactive(None)
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -236,23 +255,39 @@ class AttributeValuesTable(DataTable):
         self.cursor_type = "row"
         return super().compose()
 
-    def watch_attribute(self) -> None:
-        """Populate the table with value of an attribute."""
-        if not self.attribute:
+    def watch_property(self) -> None:
+        """Populate the table with value of an property."""
+        if not self.property:
             return
-
         self.clear()
 
-        value = self.attribute.Get()
+        value = None
+        is_array = False
+
+        if isinstance(self.property, Usd.Attribute):
+            value = self.property.Get()
+            if not value:
+                return
+
+            # Check if the value of the attribute is an array.
+            type_name = self.property.GetTypeName()
+            is_array = type_name.isArray
+
+        if isinstance(self.property, Usd.Relationship):
+            value = self.property.GetTargets()
+            if not value:
+                return
+
+            # Relationships always return a list a list of paths.
+            is_array = True
+
         if not value:
             return
 
-        # Check if the value of the attribute is an array.
-        type_name = self.attribute.GetTypeName()
-
-        if type_name.isArray:
+        if is_array:
             for index, item in enumerate(value):
                 self.add_row(index, item)
             return
 
+        # If it's not an array then create a singe row that contains the value.
         self.add_row("", value)

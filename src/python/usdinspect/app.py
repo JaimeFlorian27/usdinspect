@@ -11,10 +11,10 @@ from textual.containers import HorizontalScroll
 from textual.widgets import Footer, Header, TabbedContent
 
 from .widgets import (
-    AttributeValuesTable,
-    PrimAttributesTable,
     PrimLayerStackTable,
     PrimMetadataTable,
+    PrimPropertiesTable,
+    PropertyValuesTable,
     StageTree,
 )
 
@@ -38,8 +38,8 @@ class UsdInspectApp(App):
         self._stage = stage
         self._stage_tree = StageTree("Root", "/", classes="bordered_widget")
         self._prim_composition_list = PrimLayerStackTable(classes="bordered_widget")
-        self._prim_attributes_table = PrimAttributesTable()
-        self._prim_attribute_values_table = AttributeValuesTable(
+        self._prim_properties_table = PrimPropertiesTable()
+        self._prim_property_values_table = PropertyValuesTable(
             classes="bordered_widget",
         )
         self._prim_metadata_table = PrimMetadataTable()
@@ -60,12 +60,14 @@ class UsdInspectApp(App):
 
         with HorizontalScroll(can_focus=False):
             with TabbedContent(
-                "Attributes", "Metadata", classes="bordered_widget"
+                "Properties",
+                "Metadata",
+                classes="bordered_widget",
             ) as tabs:
                 tabs.border_title = "Prim Data"
-                yield self._prim_attributes_table
+                yield self._prim_properties_table
                 yield self._prim_metadata_table
-            yield self._prim_attribute_values_table
+            yield self._prim_property_values_table
         yield Footer()
 
     @on(StageTree.NodeHighlighted, "StageTree")
@@ -80,18 +82,18 @@ class UsdInspectApp(App):
         prim = self._stage.GetPrimAtPath(event.node.data)
 
         # Update the widgets that depend on the selected prim.
-        self._prim_attributes_table.prim = prim
+        self._prim_properties_table.prim = prim
         self._prim_composition_list.prim = prim
         self._prim_metadata_table.prim = prim
 
-    @on(PrimAttributesTable.RowHighlighted, "PrimAttributesTable")
-    def populate_attribute_values(
+    @on(PrimPropertiesTable.RowHighlighted, "PrimPropertiesTable")
+    def populate_property_values(
         self,
-        event: PrimAttributesTable.RowHighlighted,
+        event: PrimPropertiesTable.RowHighlighted,
     ) -> None:
-        """Handle the selection of a prim attribute.
+        """Handle the selection of a prim property.
 
-        Populate any widgets whose data depend on the currently selected attribute.
+        Populate any widgets whose data depend on the currently selected property.
 
         """
         selected_prim_node = self._stage_tree.cursor_node
@@ -99,16 +101,16 @@ class UsdInspectApp(App):
             return
 
         prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
-        attribute = prim.GetAttribute(str(event.row_key.value))
+        prim_property = prim.GetProperty(str(event.row_key.value))
 
-        self._prim_attribute_values_table.attribute = attribute
+        self._prim_property_values_table.property = prim_property
 
     @on(PrimLayerStackTable.RowHighlighted, "PrimLayerStackTable")
     def layer_highlighted(
         self,
         event: PrimLayerStackTable.RowHighlighted,
     ) -> None:
-        """Handle the selection of a prim attribute.
+        """Handle the selection of a layer that contributes to the current prim.
 
         Populate any widgets whose data depend on the currently selected layer.
 
@@ -118,23 +120,23 @@ class UsdInspectApp(App):
             return
 
         # Handle composed case, get the currently selected prim and assign it to
-        # the attribute's table prim. I do this way as the reactive prim attribute
-        # will always update the attributes table when assigned.
+        # the properties table prim attr. I do this way as the reactive prim property
+        # will always update the properties table when assigned.
         if row_key == "composed":
             selected_prim_node = self._stage_tree.cursor_node
             if not selected_prim_node:
                 return
 
             selected_prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
-            self._prim_attributes_table.prim = selected_prim
+            self._prim_properties_table.prim = selected_prim
             return
 
         # Regular case, get the prim spec from the selected layer and assign it to the
-        # attributes table.
+        # properties table.
         layer_path, prim_spec_path = row_key.split("|")
         prim_spec: PrimSpec | None = Layer.FindOrOpen(layer_path).GetPrimAtPath(
             prim_spec_path,
         )
 
-        self._prim_attributes_table.prim_spec = prim_spec
+        self._prim_properties_table.prim_spec = prim_spec
         return
