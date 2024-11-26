@@ -3,12 +3,12 @@
 from typing import TYPE_CHECKING
 
 from pxr import Sdf, Usd
-from pxr.Sdf import PrimSpec
-from pxr.Usd import CompositionArc, Prim, PrimCompositionQuery, Stage
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import DataTable, ListItem, Tree
+
+from . import usd_utils
 
 if TYPE_CHECKING:
     from textual.widgets.tree import TreeNode
@@ -18,7 +18,7 @@ class StageTree(Tree):
     """Tree widget that presents a USD Stage."""
 
     BORDER_TITLE = "Stage Tree"
-    stage: reactive[Stage | None] = reactive(None)
+    stage: reactive[Usd.Stage | None] = reactive(None)
 
     def watch_stage(self) -> None:
         """Populate the tree hierarchy with prims.
@@ -34,7 +34,7 @@ class StageTree(Tree):
 
         self.root.expand()
 
-        prim_to_node: dict[Prim, TreeNode] = {}
+        prim_to_node: dict[Usd.Prim, TreeNode] = {}
         root_prim = self.stage.GetPseudoRoot()
 
         # This dict will store a mapping between the prims and their respective node
@@ -65,16 +65,21 @@ class StageTree(Tree):
 class PrimLayerListItem(ListItem):
     """..."""
 
-    def __init__(self, *children: Widget, prim_spec: PrimSpec | None = None) -> None:
+    def __init__(
+        self,
+        *children: Widget,
+        prim_spec: Sdf.PrimSpec | None = None,
+    ) -> None:
         """..."""
         super().__init__(*children)
         self.prim_spec = prim_spec
 
 
-class PrimMetadataTable(DataTable):
-    """DataTable that represents the metadata of a Usd Prim."""
+class MetadataTable(DataTable):
+    """Table that represents the metadata of a Usd Prim, Property and their specs."""
 
-    prim: reactive[Prim | None] = reactive(None)
+    usd_object: reactive[Usd.Object | None] = reactive(None, always_update=True)
+    sdf_spec_object: reactive[Sdf.Spec | None] = reactive(None, always_update=True)
 
     def compose(self) -> ComposeResult:
         """Override compose to add cursor type and default columns.
@@ -87,26 +92,32 @@ class PrimMetadataTable(DataTable):
         self.add_columns("Field Name", "Value")
         return super().compose()
 
-    def watch_prim(self) -> None:
-        """Populate table with the metadata of a prim.
-
-        Args:
-        prim: USD Prim.
-
-        """
-        if not self.prim:
+    def watch_usd_object(self) -> None:
+        """Populate table with the metadata of a Usd Object."""
+        if not self.usd_object:
             return
 
         self.clear()
-        for field, value in self.prim.GetAllMetadata().items():
+
+        for field, value in usd_utils.get_object_metadata(self.usd_object):
             self.add_row(field, value)
+
+    def watch_sdf_spec_object(self) -> None:
+        """Populate table with the metadata of a Sdf Spec."""
+        if not self.sdf_spec_object:
+            return
+
+        self.clear()
+
+        for key, value in usd_utils.get_spec_metadata(self.sdf_spec_object):
+            self.add_row(key, value)
 
 
 class PrimLayerStackTable(DataTable):
     """DataTable that presents the layer stack of a USD Prim."""
 
     BORDER_TITLE = "Prim Layer Stack"
-    prim: reactive[Prim | None] = reactive(None)
+    prim: reactive[Usd.Prim | None] = reactive(None)
 
     def compose(self) -> ComposeResult:
         """Override compose to add cursor type and default columns.
@@ -132,7 +143,7 @@ class PrimLayerStackTable(DataTable):
         self.clear()
         self.add_row("Composed", "", key="composed")
 
-        composition_arcs: list[CompositionArc] = PrimCompositionQuery(
+        composition_arcs: list[Usd.CompositionArc] = Usd.PrimCompositionQuery(
             self.prim,
         ).GetCompositionArcs()
 
@@ -175,8 +186,8 @@ class PrimLayerStackTable(DataTable):
 class PrimPropertiesTable(DataTable):
     """Widget that displays the properties of a UsdPrim in a table view."""
 
-    prim: reactive[Prim | None] = reactive(None, always_update=True)
-    prim_spec: reactive[PrimSpec | None] = reactive(None, always_update=True)
+    BORDER_TITLE = "Prim Properties"
+    prim: reactive[Usd.Prim | Sdf.PrimSpec | None] = reactive(None, always_update=True)
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -196,44 +207,39 @@ class PrimPropertiesTable(DataTable):
 
         self.clear()
         # item name as prop, property would shadow the python built-in.
-        for prop in self.prim.GetProperties():
-            if isinstance(prop, Usd.Attribute):
-                self.add_row(
-                    "Attr",
-                    prop.GetName(),
-                    prop.GetTypeName(),
-                    key=prop.GetName(),
-                )
-            if isinstance(prop, Usd.Relationship):
-                self.add_row(
-                    "Rel",
-                    prop.GetName(),
-                    "",
-                    key=prop.GetName(),
-                )
-        return
-
-    def watch_prim_spec(self) -> None:
-        """Populate the table with the properties of the current PrimSpec."""
-        if not self.prim_spec:
-            return
-
-        self.clear()
-        for prop_spec in self.prim_spec.properties:
-            if isinstance(prop_spec, Sdf.AttributeSpec):
-                self.add_row(
-                    "Attr",
-                    prop_spec.name,
-                    prop_spec.typeName,
-                    key=prop_spec.name,
-                )
-            if isinstance(prop_spec, Sdf.RelationshipSpec):
-                self.add_row(
-                    "Rel",
-                    prop_spec.name,
-                    "",
-                    key=prop_spec.name,
-                )
+        if isinstance(self.prim, Usd.Prim):
+            for prop in self.prim.GetProperties():
+                if isinstance(prop, Usd.Attribute):
+                    self.add_row(
+                        "Attr",
+                        prop.GetName(),
+                        prop.GetTypeName(),
+                        key=prop.GetName(),
+                    )
+                if isinstance(prop, Usd.Relationship):
+                    self.add_row(
+                        "Rel",
+                        prop.GetName(),
+                        "",
+                        key=prop.GetName(),
+                    )
+        if isinstance(self.prim, Sdf.PrimSpec):
+            self.clear()
+            for prop_spec in self.prim.properties:
+                if isinstance(prop_spec, Sdf.AttributeSpec):
+                    self.add_row(
+                        "Attr",
+                        prop_spec.name,
+                        prop_spec.typeName,
+                        key=prop_spec.name,
+                    )
+                if isinstance(prop_spec, Sdf.RelationshipSpec):
+                    self.add_row(
+                        "Rel",
+                        prop_spec.name,
+                        "",
+                        key=prop_spec.name,
+                    )
         return
 
 
