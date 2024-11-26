@@ -28,3 +28,8 @@ TabbedContent{
 PrimPropertiesTable {
   height: 1fr;
   }
+
+MetadataTable {
+  width: 1fr;
+  height: 1fr;
+  }
