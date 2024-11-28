@@ -25,11 +25,7 @@ TabbedContent{
   height: 1fr;
   }
 
-PrimPropertiesTable {
+DataTable {
   height: 1fr;
-  }
-
-MetadataTable {
   width: 1fr;
-  height: 1fr;
   }

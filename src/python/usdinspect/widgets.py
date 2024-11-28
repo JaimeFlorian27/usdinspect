@@ -3,10 +3,10 @@
 from typing import TYPE_CHECKING
 
 from pxr import Sdf, Usd
+from textual import on
 from textual.app import ComposeResult
 from textual.reactive import reactive
-from textual.widget import Widget
-from textual.widgets import DataTable, ListItem, Tree
+from textual.widgets import DataTable, TabbedContent, TabPane, Tree
 
 from . import usd_utils
 
@@ -62,55 +62,37 @@ class StageTree(Tree):
                 current_node = parent_node.add_leaf(prim.GetName(), prim.GetPath())
 
 
-class PrimLayerListItem(ListItem):
-    """..."""
-
-    def __init__(
-        self,
-        *children: Widget,
-        prim_spec: Sdf.PrimSpec | None = None,
-    ) -> None:
-        """..."""
-        super().__init__(*children)
-        self.prim_spec = prim_spec
-
-
 class MetadataTable(DataTable):
     """Table that represents the metadata of a Usd Prim, Property and their specs."""
 
-    usd_object: reactive[Usd.Object | None] = reactive(None, always_update=True)
-    sdf_spec_object: reactive[Sdf.Spec | None] = reactive(None, always_update=True)
+    data_object: reactive[Usd.Object | Sdf.Spec | None] = reactive(None)
 
-    def compose(self) -> ComposeResult:
-        """Override compose to add cursor type and default columns.
-
-        Returns:
-            ComposeResult.
-
-        """
+    def on_mount(self) -> None:
+        """Construct the table after is has been mounted."""
         self.cursor_type = "row"
-        self.add_columns("Field Name", "Value")
-        return super().compose()
+        self.add_column("Field Name", key="name")
+        self.add_column("Type", key="type")
+        self.add_column("Value", key="value")
+        return super().on_mount()
 
-    def watch_usd_object(self) -> None:
+    def watch_data_object(self) -> None:
         """Populate table with the metadata of a Usd Object."""
-        if not self.usd_object:
+        if not self.data_object:
             return
 
         self.clear()
 
-        for field, value in usd_utils.get_object_metadata(self.usd_object):
-            self.add_row(field, value)
+        data = None
+        if isinstance(self.data_object, Sdf.Spec):
+            data = usd_utils.get_spec_metadata(self.data_object)
+        elif isinstance(self.data_object, Usd.Object):
+            data = usd_utils.get_object_metadata(self.data_object)
 
-    def watch_sdf_spec_object(self) -> None:
-        """Populate table with the metadata of a Sdf Spec."""
-        if not self.sdf_spec_object:
+        if not data:
             return
 
-        self.clear()
-
-        for key, value in usd_utils.get_spec_metadata(self.sdf_spec_object):
-            self.add_row(key, value)
+        for metadatum, value in data:
+            self.add_row(metadatum, type(value).__name__, value, key=metadatum)
 
 
 class PrimLayerStackTable(DataTable):
@@ -187,7 +169,7 @@ class PrimPropertiesTable(DataTable):
     """Widget that displays the properties of a UsdPrim in a table view."""
 
     BORDER_TITLE = "Prim Properties"
-    prim: reactive[Usd.Prim | Sdf.PrimSpec | None] = reactive(None, always_update=True)
+    data_object: reactive[Usd.Prim | Sdf.PrimSpec | None] = reactive(None)
 
     def compose(self) -> ComposeResult:
         """Compose the widget.
@@ -200,15 +182,15 @@ class PrimPropertiesTable(DataTable):
         self.add_columns("Type", "Property", "Value Type")
         return super().compose()
 
-    def watch_prim(self) -> None:
+    def watch_data_object(self) -> None:
         """Populate the table with the properties of the current Prim."""
-        if not self.prim:
+        if not self.data_object:
             return
 
         self.clear()
         # item name as prop, property would shadow the python built-in.
-        if isinstance(self.prim, Usd.Prim):
-            for prop in self.prim.GetProperties():
+        if isinstance(self.data_object, Usd.Prim):
+            for prop in self.data_object.GetProperties():
                 if isinstance(prop, Usd.Attribute):
                     self.add_row(
                         "Attr",
@@ -223,9 +205,10 @@ class PrimPropertiesTable(DataTable):
                         "",
                         key=prop.GetName(),
                     )
-        if isinstance(self.prim, Sdf.PrimSpec):
+
+        if isinstance(self.data_object, Sdf.PrimSpec):
             self.clear()
-            for prop_spec in self.prim.properties:
+            for prop_spec in self.data_object.properties:
                 if isinstance(prop_spec, Sdf.AttributeSpec):
                     self.add_row(
                         "Attr",
@@ -243,57 +226,68 @@ class PrimPropertiesTable(DataTable):
         return
 
 
-class PropertyValuesTable(DataTable):
-    """Widget that displays the values of a property in a table view."""
+class PrimDataTabs(TabbedContent):
+    """TabbedContent that holds widgets that represents data of a Prim."""
 
-    BORDER_TITLE = "Values"
+    BORDER_TITLE = "Prim Data"
+    prim: reactive[Usd.Prim | Sdf.PrimSpec | None] = reactive(None)
 
-    property: reactive[Usd.Property | None] = reactive(None)
+    def on_mount(self) -> None:
+        """Set up the PrimDataTabs.
 
-    def compose(self) -> ComposeResult:
-        """Compose the widget.
+        This method adds the TabPanes that display the Prim Data.
+        """
+        self.add_pane(
+            TabPane(
+                "Properties",
+                PrimPropertiesTable(
+                    id="prim_properties_table",
+                    classes="prim_data_holder",
+                ),
+            ),
+        )
+        self.add_pane(
+            TabPane(
+                "Metadata",
+                MetadataTable(id="prim_metadata_table", classes="prim_data_holder"),
+            ),
+        )
 
-        Returns:
-            ComposeResult of the widget.
+    def watch_prim(self) -> None:
+        """React to changes of the Prim attribute."""
+        if not self.prim:
+            return
+
+        if not self.active_pane:
+            return
+
+        active_widget = self.active_pane.query_one(
+            ".prim_data_holder",
+        )
+
+        if isinstance(active_widget, PrimPropertiesTable | MetadataTable):
+            active_widget.data_object = self.prim
+
+    @on(TabbedContent.TabActivated, "PrimDataTabs")
+    def _prim_data_tab_changed(self, event: TabbedContent.TabActivated) -> None:
+        """Handle changing tabs.
+
+        this methis is in charge of makin sure that the prim_data_holder widget that
+        becomes visible when a tab is changed has its data_object updated.
+
+        Args:
+            event: Event that triggered a call to this method.
 
         """
-        self.add_columns("Index", "Value")
-        self.cursor_type = "row"
-        return super().compose()
-
-    def watch_property(self) -> None:
-        """Populate the table with value of an property."""
-        if not self.property:
+        if not event.tabbed_content:
             return
-        self.clear()
+        active_pane = event.tabbed_content.active_pane
 
-        value = None
-        is_array = False
-
-        if isinstance(self.property, Usd.Attribute):
-            value = self.property.Get()
-            if not value:
-                return
-
-            # Check if the value of the attribute is an array.
-            type_name = self.property.GetTypeName()
-            is_array = type_name.isArray
-
-        if isinstance(self.property, Usd.Relationship):
-            value = self.property.GetTargets()
-            if not value:
-                return
-
-            # Relationships always return a list a list of paths.
-            is_array = True
-
-        if not value:
+        if not active_pane:
             return
+        active_widget = active_pane.query_one(
+            ".prim_data_holder",
+        )
 
-        if is_array:
-            for index, item in enumerate(value):
-                self.add_row(index, item)
-            return
-
-        # If it's not an array then create a singe row that contains the value.
-        self.add_row("", value)
+        if isinstance(active_widget, PrimPropertiesTable | MetadataTable):
+            active_widget.data_object = self.prim
