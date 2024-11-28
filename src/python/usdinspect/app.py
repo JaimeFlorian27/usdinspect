@@ -9,11 +9,12 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalScroll
 from textual.widgets import Footer, Header, TabbedContent
 
+from . import values_table
 from .widgets import (
     MetadataTable,
+    PrimDataTabs,
     PrimLayerStackTable,
     PrimPropertiesTable,
-    PropertyValuesTable,
     StageTree,
 )
 
@@ -37,10 +38,13 @@ class UsdInspectApp(App):
         self._stage = stage
         self._stage_tree = StageTree("Root", "/", classes="bordered_widget")
         self._prim_composition_list = PrimLayerStackTable(classes="bordered_widget")
-        self._prim_properties_table = PrimPropertiesTable()
-        self._property_values_table = PropertyValuesTable()
-        self._prim_metadata_table = MetadataTable()
+        self._property_values_table = values_table.ValuesTable()
         self._property_metatada_table = MetadataTable()
+        self._value_tabs = TabbedContent(
+            "Values",
+            "Metadata",
+            classes="bordered_widget",
+        )
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -58,22 +62,9 @@ class UsdInspectApp(App):
 
         with HorizontalScroll(can_focus=False):
             # Tabs for the Prim Data.
-            with TabbedContent(
-                "Properties",
-                "Metadata",
-                classes="bordered_widget",
-            ) as tabs:
-                tabs.border_title = "Prim Data"
-                yield self._prim_properties_table
-                yield self._prim_metadata_table
-
-            # Tabs for the Property data.
-            with TabbedContent(
-                "Values",
-                "Metadata",
-                classes="bordered_widget",
-            ) as tabs:
-                tabs.border_title = "Property Data"
+            yield PrimDataTabs(id="prim_data_tabs", classes="bordered_widget")
+            with self._value_tabs:
+                self._value_tabs.border_title = "Property Dataaaaaa"
                 yield self._property_values_table
                 yield self._property_metatada_table
         yield Footer()
@@ -90,7 +81,6 @@ class UsdInspectApp(App):
         prim = self._stage.GetPrimAtPath(event.node.data)
 
         # Update the widgets that depend on the selected prim.
-        self._prim_properties_table.prim = prim
         self._prim_composition_list.prim = prim
 
     @on(PrimPropertiesTable.RowHighlighted, "PrimPropertiesTable")
@@ -105,13 +95,35 @@ class UsdInspectApp(App):
         """
         selected_prim_node = self._stage_tree.cursor_node
         if not selected_prim_node:
+            self._property_values_table.state = values_table.NoValueDisplayState()
+            return
+
+        # If the table is empty and the message is emitted the RowKey will be None
+        if not event.row_key:
+            self._property_values_table.state = values_table.NoValueDisplayState()
             return
 
         prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
         prim_property = prim.GetProperty(str(event.row_key.value))
 
-        self._property_values_table.property = prim_property
-        self._property_metatada_table.usd_object = prim_property
+        self._property_values_table.state = values_table.PropertyValueDisplayState(
+            prim_property,
+        )
+        self._property_metatada_table.data_object = prim_property
+
+    @on(MetadataTable.RowHighlighted, "#prim_metadata_table")
+    def _prim_metadatum_highlighted(
+        self,
+        event: MetadataTable.RowHighlighted,
+    ) -> None:
+        if not event.row_key:
+            self._property_values_table.state = values_table.NoValueDisplayState()
+            return
+
+        metadata_value = event.data_table.get_cell(event.row_key, "value")
+        self._property_values_table.state = values_table.MetadatumValueDisplayState(
+            metadata_value,
+        )
 
     @on(PrimLayerStackTable.RowHighlighted, "PrimLayerStackTable")
     def _layer_highlighted(
@@ -127,6 +139,7 @@ class UsdInspectApp(App):
         if not row_key:
             return
 
+        prim_data_tabs = self.query_one("#prim_data_tabs", PrimDataTabs)
         # Handle composed case, get the currently selected prim and assign it to
         # the properties table prim attr. I do this way as the reactive prim property
         # will always update the properties table when assigned.
@@ -136,8 +149,7 @@ class UsdInspectApp(App):
                 return
 
             selected_prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
-            self._prim_properties_table.prim = selected_prim
-            self._prim_metadata_table.usd_object = selected_prim
+            prim_data_tabs.prim = selected_prim
             return
 
         # Regular case, get the prim spec from the selected layer and assign it to the
@@ -147,6 +159,16 @@ class UsdInspectApp(App):
             prim_spec_path,
         )
 
-        self._prim_properties_table.prim = prim_spec
-        self._prim_metadata_table.sdf_spec_object = prim_spec
+        prim_data_tabs.prim = prim_spec
         return
+
+    @on(TabbedContent.TabActivated, "#prim_data_tabs")
+    def _prim_data_tab_changed(self, event: TabbedContent.TabActivated) -> None:
+        """Handle tab changes in the Prim data Tabs."""
+        if str(event.tab.label) == "Properties":
+            self._value_tabs.border_title = "Property Data"
+            self._value_tabs.show_tab("tab-2")
+
+        if str(event.tab.label) == "Metadata":
+            self._value_tabs.hide_tab("tab-2")
+            self._value_tabs.border_title = "Metadatum data"
