@@ -36,7 +36,6 @@ class UsdInspectApp(App):
         """
         super().__init__()
         self._stage = stage
-        self._stage_tree = StageTree("Root", "/", classes="bordered_widget")
         self._prim_composition_list = PrimLayerStackTable(classes="bordered_widget")
         self._property_values_table = values_table.ValuesTable()
         self._property_metatada_table = MetadataTable()
@@ -54,17 +53,15 @@ class UsdInspectApp(App):
 
         """
         yield Header()
-        self._stage_tree.stage = self._stage
-        self._stage_tree.focus()
         with HorizontalScroll():
-            yield self._stage_tree
+            yield StageTree(self._stage, focus=True, classes="bordered_widget")
             yield self._prim_composition_list
 
         with HorizontalScroll(can_focus=False):
             # Tabs for the Prim Data.
             yield PrimDataTabs(id="prim_data_tabs", classes="bordered_widget")
             with self._value_tabs:
-                self._value_tabs.border_title = "Property Dataaaaaa"
+                self._value_tabs.border_title = "Property Data"
                 yield self._property_values_table
                 yield self._property_metatada_table
         yield Footer()
@@ -76,12 +73,8 @@ class UsdInspectApp(App):
         Populate any widgets whose data depend on the currently selected prim.
 
         """
-        if not event.node.data:
-            return
-        prim = self._stage.GetPrimAtPath(event.node.data)
-
         # Update the widgets that depend on the selected prim.
-        self._prim_composition_list.prim = prim
+        self._prim_composition_list.prim = event.prim
 
     @on(PrimPropertiesTable.RowHighlighted, "PrimPropertiesTable")
     def _property_highlighted(
@@ -93,17 +86,16 @@ class UsdInspectApp(App):
         Populate any widgets whose data depend on the currently selected property.
 
         """
-        selected_prim_node = self._stage_tree.cursor_node
-        if not selected_prim_node:
-            self._property_values_table.state = values_table.NoValueDisplayState()
-            return
-
         # If the table is empty and the message is emitted the RowKey will be None
         if not event.row_key:
             self._property_values_table.state = values_table.NoValueDisplayState()
             return
 
-        prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
+        prim = self.query_one(StageTree).prim
+        if not prim:
+            self._property_values_table.state = values_table.NoValueDisplayState()
+            return
+
         prim_property = prim.GetProperty(str(event.row_key.value))
 
         self._property_values_table.state = values_table.PropertyValueDisplayState(
@@ -144,7 +136,7 @@ class UsdInspectApp(App):
         # the properties table prim attr. I do this way as the reactive prim property
         # will always update the properties table when assigned.
         if row_key == "composed":
-            selected_prim_node = self._stage_tree.cursor_node
+            selected_prim_node = self.query_one(StageTree).cursor_node
             if not selected_prim_node:
                 return
 
