@@ -1,24 +1,68 @@
 """Module that contains multiple widgets used in this application."""
 
-from typing import TYPE_CHECKING
 
 from pxr import Sdf, Usd
 from textual import on
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widgets import DataTable, TabbedContent, TabPane, Tree
+from textual.widgets.tree import EventTreeDataType, TreeNode
 
 from . import usd_utils
-
-if TYPE_CHECKING:
-    from textual.widgets.tree import TreeNode
 
 
 class StageTree(Tree):
     """Tree widget that presents a USD Stage."""
 
+    class NodeHighlighted(Tree.NodeHighlighted):
+        """Overrides thhe NodeHighlighted message to pass a prim."""
+
+        def __init__(self, node: TreeNode[EventTreeDataType]) -> None:
+            """Initialize the class."""
+            super().__init__(node)
+
+            tree = node.tree
+            prim_path = str(node.data)
+            if not prim_path:
+                return
+
+            self.prim = None
+            if isinstance(tree, StageTree):
+                if not tree.stage:
+                    return
+                self.prim = tree.stage.GetPrimAtPath(prim_path)
+                tree.prim = self.prim
+
     BORDER_TITLE = "Stage Tree"
     stage: reactive[Usd.Stage | None] = reactive(None)
+
+    def __init__(
+        self,
+        stage: Usd.Stage,
+        name: str | None = None,
+        id_selector: str | None = None,
+        classes: str | None = None,
+        disabled: bool = False,
+        focus: bool = True,
+    ) -> None:
+        """Initialize a StageTree.
+
+        Args:
+            stage: Usd Stage that the tree will represent.
+            name: Name of the widget.
+            id_selector: Id for the widgets.
+            classes: CSS classes for the widget.
+            disabled: If the widget should be disabled.
+            focus: If the widget should be focused.
+
+        """
+        super().__init__(
+            "/", "/", name=name, id=id_selector, classes=classes, disabled=disabled,
+        )
+        if focus:
+            self.focus()
+        self.prim: Usd.Prim | None = None
+        self.stage = stage
 
     def watch_stage(self) -> None:
         """Populate the tree hierarchy with prims.
