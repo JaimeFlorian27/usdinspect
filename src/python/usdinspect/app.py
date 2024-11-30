@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 class UsdInspectApp(App):
     """Usd Inspect main application class."""
 
+    TITLE = " USD Inspect"
     CSS_PATH = Path(__file__).parent / "ui" / "style.tcss"
 
     def __init__(self, stage: Usd.Stage) -> None:
@@ -82,21 +83,32 @@ class UsdInspectApp(App):
             values_data_table.state = values_table.NoValueDisplayState()
             return
 
-        prim = self.query_one(StageTree).prim
+        prim = self.query_one(PrimDataTabs).prim
         if not prim:
             values_data_table.state = values_table.NoValueDisplayState()
             return
 
-        prim_property = prim.GetProperty(str(event.row_key.value))
-
-        values_data_table.state = values_table.PropertyValueDisplayState(
-            prim_property,
-        )
         property_metadata_table = self.query_one(
             "#property_metadata_table",
             MetadataTable,
         )
-        property_metadata_table.data_object = prim_property
+
+        if isinstance(prim, Usd.Prim):
+            prim_property = prim.GetProperty(str(event.row_key.value))
+            values_data_table.state = values_table.PropertyValueDisplayState(
+                prim_property,
+            )
+            property_metadata_table.data_object = prim_property
+
+        if isinstance(prim, Sdf.PrimSpec):
+            # A . must be appended at the beginning of the property name in
+            # order for it to be a valid relative path.
+            # https://openusd.org/dev/api/class_sdf_path.html#sec_SdfPath_Syntax
+            prim_property = prim.GetPropertyAtPath(f".{event.row_key.value}")
+            values_data_table.state = values_table.PropertySpecValueDisplayState(
+                prim_property,
+            )
+            property_metadata_table.data_object = prim_property
 
     @on(MetadataTable.RowHighlighted, "#prim_metadata_table")
     def _prim_metadatum_highlighted(
