@@ -1,12 +1,13 @@
 """Module that contains multiple widgets used in this application."""
 
-
 from pxr import Sdf, Usd
 from textual import on
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widgets import DataTable, TabbedContent, TabPane, Tree
 from textual.widgets.tree import EventTreeDataType, TreeNode
+
+from usdinspect import values_table
 
 from . import usd_utils
 
@@ -57,7 +58,12 @@ class StageTree(Tree):
 
         """
         super().__init__(
-            "/", "/", name=name, id=id_selector, classes=classes, disabled=disabled,
+            "/",
+            "/",
+            name=name,
+            id=id_selector,
+            classes=classes,
+            disabled=disabled,
         )
         if focus:
             self.focus()
@@ -288,12 +294,14 @@ class PrimDataTabs(TabbedContent):
                     id="prim_properties_table",
                     classes="prim_data_holder",
                 ),
+                id="prim_properties_tab",
             ),
         )
         self.add_pane(
             TabPane(
                 "Metadata",
                 MetadataTable(id="prim_metadata_table", classes="prim_data_holder"),
+                id="prim_metadata_table",
             ),
         )
 
@@ -335,3 +343,30 @@ class PrimDataTabs(TabbedContent):
 
         if isinstance(active_widget, PrimPropertiesTable | MetadataTable):
             active_widget.data_object = self.prim
+
+
+class ValueDataTabs(TabbedContent):
+    """TabbedContent that holds widgets that represents data of a property, metadata."""
+
+    BORDER_TITLE = "Property Data"
+    prim: reactive[Usd.Prim | Sdf.PrimSpec | None] = reactive(None)
+
+    def on_mount(self) -> None:
+        """Set up the PrimDataTabs.
+
+        This method adds the TabPanes that display the Prim Data.
+        """
+        self.add_pane(
+            TabPane(
+                "Values",
+                values_table.ValuesTable(id="values_table"),
+                id="value_tab",
+            ),
+        )
+        self.add_pane(
+            TabPane(
+                "Metadata",
+                MetadataTable(id="property_metadata_table"),
+                id="metadata_tab",
+            ),
+        )

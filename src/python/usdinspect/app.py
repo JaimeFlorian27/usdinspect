@@ -16,6 +16,7 @@ from .widgets import (
     PrimLayerStackTable,
     PrimPropertiesTable,
     StageTree,
+    ValueDataTabs,
 )
 
 if TYPE_CHECKING:
@@ -36,14 +37,6 @@ class UsdInspectApp(App):
         """
         super().__init__()
         self._stage = stage
-        self._prim_composition_list = PrimLayerStackTable(classes="bordered_widget")
-        self._property_values_table = values_table.ValuesTable()
-        self._property_metatada_table = MetadataTable()
-        self._value_tabs = TabbedContent(
-            "Values",
-            "Metadata",
-            classes="bordered_widget",
-        )
 
     def compose(self) -> ComposeResult:
         """Build the UI.
@@ -55,15 +48,12 @@ class UsdInspectApp(App):
         yield Header()
         with HorizontalScroll():
             yield StageTree(self._stage, focus=True, classes="bordered_widget")
-            yield self._prim_composition_list
+            yield PrimLayerStackTable(classes="bordered_widget")
 
         with HorizontalScroll(can_focus=False):
             # Tabs for the Prim Data.
             yield PrimDataTabs(id="prim_data_tabs", classes="bordered_widget")
-            with self._value_tabs:
-                self._value_tabs.border_title = "Property Data"
-                yield self._property_values_table
-                yield self._property_metatada_table
+            yield ValueDataTabs(id="value_data_tabs", classes="bordered_widget")
         yield Footer()
 
     @on(StageTree.NodeHighlighted, "StageTree")
@@ -74,7 +64,7 @@ class UsdInspectApp(App):
 
         """
         # Update the widgets that depend on the selected prim.
-        self._prim_composition_list.prim = event.prim
+        self.query_one(PrimLayerStackTable).prim = event.prim
 
     @on(PrimPropertiesTable.RowHighlighted, "PrimPropertiesTable")
     def _property_highlighted(
@@ -86,34 +76,40 @@ class UsdInspectApp(App):
         Populate any widgets whose data depend on the currently selected property.
 
         """
+        values_data_table = self.query_one(values_table.ValuesTable)
         # If the table is empty and the message is emitted the RowKey will be None
         if not event.row_key:
-            self._property_values_table.state = values_table.NoValueDisplayState()
+            values_data_table.state = values_table.NoValueDisplayState()
             return
 
         prim = self.query_one(StageTree).prim
         if not prim:
-            self._property_values_table.state = values_table.NoValueDisplayState()
+            values_data_table.state = values_table.NoValueDisplayState()
             return
 
         prim_property = prim.GetProperty(str(event.row_key.value))
 
-        self._property_values_table.state = values_table.PropertyValueDisplayState(
+        values_data_table.state = values_table.PropertyValueDisplayState(
             prim_property,
         )
-        self._property_metatada_table.data_object = prim_property
+        property_metadata_table = self.query_one(
+            "#property_metadata_table",
+            MetadataTable,
+        )
+        property_metadata_table.data_object = prim_property
 
     @on(MetadataTable.RowHighlighted, "#prim_metadata_table")
     def _prim_metadatum_highlighted(
         self,
         event: MetadataTable.RowHighlighted,
     ) -> None:
+        values_data_table = self.query_one(values_table.ValuesTable)
         if not event.row_key:
-            self._property_values_table.state = values_table.NoValueDisplayState()
+            values_data_table.state = values_table.NoValueDisplayState()
             return
 
         metadata_value = event.data_table.get_cell(event.row_key, "value")
-        self._property_values_table.state = values_table.MetadatumValueDisplayState(
+        values_data_table.state = values_table.MetadatumValueDisplayState(
             metadata_value,
         )
 
@@ -157,10 +153,11 @@ class UsdInspectApp(App):
     @on(TabbedContent.TabActivated, "#prim_data_tabs")
     def _prim_data_tab_changed(self, event: TabbedContent.TabActivated) -> None:
         """Handle tab changes in the Prim data Tabs."""
+        value_tabs = self.query_one("#value_data_tabs", ValueDataTabs)
         if str(event.tab.label) == "Properties":
-            self._value_tabs.border_title = "Property Data"
-            self._value_tabs.show_tab("tab-2")
+            value_tabs.border_title = "Property Data"
+            value_tabs.show_tab("metadata_tab")
 
         if str(event.tab.label) == "Metadata":
-            self._value_tabs.hide_tab("tab-2")
-            self._value_tabs.border_title = "Metadatum data"
+            value_tabs.hide_tab("metadata_tab")
+            value_tabs.border_title = "Metadatum data"
