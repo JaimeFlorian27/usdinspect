@@ -44,7 +44,7 @@ class DataTableDisplayState(ABC):
 class PropertyValueDisplayState(DataTableDisplayState):
     """Define the state of a DataTable to display the values of a Property."""
 
-    def __init__(self, usd_property: Usd.Property | Sdf.PropertySpec) -> None:
+    def __init__(self, usd_property: Usd.Property) -> None:
         """Construct a PropertyValueDisplayState.
 
         Args:
@@ -72,6 +72,56 @@ class PropertyValueDisplayState(DataTableDisplayState):
 
         if isinstance(self.usd_property, Usd.Relationship):
             value = self.usd_property.GetTargets()
+            if value:
+                # Relationships always return a list a list of paths.
+                is_array = True
+
+        if not value:
+            table.add_column("No Value")
+            return
+
+        if is_array:
+            table.add_columns("Index", "Value")
+            for index, item in enumerate(value):
+                table.add_row(index, item)
+            return
+
+        # If it's not an array then create a singe row that contains the value.
+        table.add_column("Value")
+        table.add_row(value)
+
+
+class PropertySpecValueDisplayState(DataTableDisplayState):
+    """Define the state of a DataTable to display the values of a Property Spec."""
+
+    def __init__(self, usd_property: Sdf.PropertySpec) -> None:
+        """Construct a PropertyValueDisplayState.
+
+        Args:
+            usd_property: Property or PropertySpec.
+
+        """
+        self.prop_spec = usd_property
+        super().__init__()
+
+    def apply(self, table: DataTable) -> None:
+        """Populate the table with value of an property."""
+        if not self.prop_spec:
+            return
+        table.clear()
+
+        value = None
+        is_array = False
+
+        if isinstance(self.prop_spec, Sdf.AttributeSpec):
+            value = self.prop_spec.default
+            if value:
+                # Check if the value of the attribute is an array.
+                type_name = self.prop_spec.typeName
+                is_array = type_name.isArray
+
+        if isinstance(self.prop_spec, Sdf.RelationshipSpec):
+            value = self.prop_spec.targetPathList.explicitItems
             if value:
                 # Relationships always return a list a list of paths.
                 is_array = True

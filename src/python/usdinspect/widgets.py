@@ -1,6 +1,8 @@
 """Module that contains multiple widgets used in this application."""
 
+import colorhash
 from pxr import Sdf, Usd
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.reactive import reactive
@@ -207,8 +209,9 @@ class PrimLayerStackTable(DataTable):
                     composition_arc_name = current_arc.GetArcType().displayName
                     current_arc_index += 1
 
+            row_color = colorhash.ColorHash(layer).hex
             self.add_row(
-                layer.GetDisplayName(),
+                Text(layer.GetDisplayName(), style=row_color),
                 composition_arc_name,
                 key=f"{layer.identifier}|{spec.path}",
             )
@@ -242,10 +245,11 @@ class PrimPropertiesTable(DataTable):
         if isinstance(self.data_object, Usd.Prim):
             for prop in self.data_object.GetProperties():
                 if isinstance(prop, Usd.Attribute):
+                    row_data = usd_utils.RowData.from_property(prop)
                     self.add_row(
-                        "Attr",
-                        prop.GetName(),
-                        prop.GetTypeName(),
+                        row_data.label,
+                        row_data.name,
+                        row_data.value_type,
                         key=prop.GetName(),
                     )
                 if isinstance(prop, Usd.Relationship):
@@ -260,10 +264,11 @@ class PrimPropertiesTable(DataTable):
             self.clear()
             for prop_spec in self.data_object.properties:
                 if isinstance(prop_spec, Sdf.AttributeSpec):
+                    row_data = usd_utils.RowData.from_property_spec(prop_spec)
                     self.add_row(
-                        "Attr",
-                        prop_spec.name,
-                        prop_spec.typeName,
+                        row_data.label,
+                        row_data.name,
+                        row_data.value_type,
                         key=prop_spec.name,
                     )
                 if isinstance(prop_spec, Sdf.RelationshipSpec):
