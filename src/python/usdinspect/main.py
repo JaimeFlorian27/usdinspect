@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pxr.Usd import Stage
 
+from . import log
 from .app import UsdInspectApp
 
 
@@ -28,10 +29,12 @@ def run() -> None:
     parser = construct_args_parser()
 
     args = parser.parse_args()
+    logger = log.get()
 
     filename: Path = Path(args.filename)
 
     if not filename.exists():
+        logger.error("The file does not exist.")
         return
 
     stage = Stage.Open(str(filename))
