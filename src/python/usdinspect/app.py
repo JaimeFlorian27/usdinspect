@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from pxr import Sdf, Usd
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import HorizontalScroll
-from textual.widgets import Footer, Header, TabbedContent
+from textual.containers import HorizontalGroup, HorizontalScroll
+from textual.widgets import Footer, Header, Input, Label, TabbedContent
 
 from . import values_table
 from .widgets import (
@@ -55,6 +55,9 @@ class UsdInspectApp(App):
             # Tabs for the Prim Data.
             yield PrimDataTabs(id="prim_data_tabs", classes="bordered_widget")
             yield ValueDataTabs(id="value_data_tabs", classes="bordered_widget")
+        with HorizontalGroup():
+            yield Label("Frame: ")
+            yield Input(value="0", type="integer", id="frame_input")
         yield Footer()
 
     @on(StageTree.NodeHighlighted, "StageTree")
@@ -173,3 +176,14 @@ class UsdInspectApp(App):
         if str(event.tab.label) == "Metadata":
             value_tabs.hide_tab("metadata_tab")
             value_tabs.border_title = "Metadatum data"
+
+    @on(Input.Changed, "#frame_input")
+    def _frame_changed(self, event: Input.Changed) -> None:
+        """Handle frame changes by updating all time dependent widgets."""
+        if not event.value:
+            return
+
+        frame = int(event.value)
+
+        table = self.query_one("#values_table", values_table.ValuesTable)
+        table.frame = frame
