@@ -9,6 +9,8 @@ display a specific type of data.
 
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 from pxr import Sdf, Usd
@@ -16,10 +18,12 @@ from textual.reactive import reactive
 from textual.widgets import DataTable
 
 
-class DataTableDisplayState(ABC):
-    """Abstract class for DataTable State objects."""
+class ValuesTableDisplayState(ABC):
+    """Abstract class for ValuesTable State objects."""
 
-    def enter(self, table: DataTable) -> None:
+    frame_dependent = False
+
+    def enter(self, table: ValuesTable) -> None:
         """Clear the table when a state is entered.
 
         Args:
@@ -31,8 +35,8 @@ class DataTableDisplayState(ABC):
             table.remove_column(key)
 
     @abstractmethod
-    def apply(self, table: DataTable) -> None:
-        """Abstract method for applying a state to the DataTable.
+    def apply(self, table: ValuesTable) -> None:
+        """Abstract method for applying a state to the ValuesTable.
 
         Args:
             table: Table to apply the state to.
@@ -41,20 +45,23 @@ class DataTableDisplayState(ABC):
         ...
 
 
-class PropertyValueDisplayState(DataTableDisplayState):
-    """Define the state of a DataTable to display the values of a Property."""
+class PropertyValueDisplayState(ValuesTableDisplayState):
+    """Define the state of a ValuesTable to display the values of a Property."""
+
+    frame_dependent = True
 
     def __init__(self, usd_property: Usd.Property) -> None:
         """Construct a PropertyValueDisplayState.
 
         Args:
             usd_property: Property or PropertySpec.
+            frame: Frame at which the property should be evaluated.
 
         """
         self.usd_property = usd_property
         super().__init__()
 
-    def apply(self, table: DataTable) -> None:
+    def apply(self, table: ValuesTable) -> None:
         """Populate the table with value of an property."""
         if not self.usd_property:
             return
@@ -64,7 +71,7 @@ class PropertyValueDisplayState(DataTableDisplayState):
         is_array = False
 
         if isinstance(self.usd_property, Usd.Attribute):
-            value = self.usd_property.Get()
+            value = self.usd_property.Get(table.frame)
             if value:
                 # Check if the value of the attribute is an array.
                 type_name = self.usd_property.GetTypeName()
@@ -91,8 +98,10 @@ class PropertyValueDisplayState(DataTableDisplayState):
         table.add_row(value)
 
 
-class PropertySpecValueDisplayState(DataTableDisplayState):
-    """Define the state of a DataTable to display the values of a Property Spec."""
+class PropertySpecValueDisplayState(ValuesTableDisplayState):
+    """Define the state of a ValuesTable to display the values of a Property Spec."""
+
+    frame_dependent = True
 
     def __init__(self, usd_property: Sdf.PropertySpec) -> None:
         """Construct a PropertyValueDisplayState.
@@ -104,7 +113,7 @@ class PropertySpecValueDisplayState(DataTableDisplayState):
         self.prop_spec = usd_property
         super().__init__()
 
-    def apply(self, table: DataTable) -> None:
+    def apply(self, table: ValuesTable) -> None:
         """Populate the table with value of an property."""
         if not self.prop_spec:
             return
@@ -141,8 +150,10 @@ class PropertySpecValueDisplayState(DataTableDisplayState):
         table.add_row(value)
 
 
-class MetadatumValueDisplayState(DataTableDisplayState):
-    """Define the state of a DataTable to display the values of a Metadatum."""
+class MetadatumValueDisplayState(ValuesTableDisplayState):
+    """Define the state of a ValuesTable to display the values of a Metadatum."""
+
+    frame_dependent = False
 
     def __init__(self, value: object) -> None:
         """Construct a MetadatumValueDisplayState.
@@ -154,8 +165,8 @@ class MetadatumValueDisplayState(DataTableDisplayState):
         self.value = value
         super().__init__()
 
-    def apply(self, table: DataTable) -> None:
-        """Apply the state to the DataTable.
+    def apply(self, table: ValuesTable) -> None:
+        """Apply the state to the ValuesTable.
 
         When this state is applied the table will have a single column `Value` and a
         single row that holds the value.
@@ -168,11 +179,11 @@ class MetadatumValueDisplayState(DataTableDisplayState):
         table.add_row(self.value)
 
 
-class NoValueDisplayState(DataTableDisplayState):
-    """Define the state of a DataTable used when there isn't a value to be displayed."""
+class NoValueDisplayState(ValuesTableDisplayState):
+    """Define the state of a ValuesTable when there isn't a value to be displayed."""
 
-    def apply(self, table: DataTable) -> None:
-        """Apply the state to the DataTable.
+    def apply(self, table: ValuesTable) -> None:
+        """Apply the state to the ValuesTable.
 
         When this state is applied the table will have a single column `Value` and a
         single row that holds the value.
@@ -188,9 +199,16 @@ class NoValueDisplayState(DataTableDisplayState):
 class ValuesTable(DataTable):
     """Widget that displays the values of a property in a table view."""
 
-    state: reactive[DataTableDisplayState] = reactive(NoValueDisplayState())
+    state: reactive[ValuesTableDisplayState] = reactive(NoValueDisplayState())
+    frame: reactive[int] = reactive(0)
 
     def watch_state(self) -> None:
         """Handle changes to the state of the table."""
         self.state.enter(self)
         self.state.apply(self)
+
+    def watch_frame(self) -> None:
+        """When the frame changes re-apply the current state if it's frame_dependent."""
+        if self.state.frame_dependent:
+            self.state.enter(self)
+            self.state.apply(self)
