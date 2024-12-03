@@ -101,8 +101,6 @@ class PropertyValueDisplayState(ValuesTableDisplayState):
 class PropertySpecValueDisplayState(ValuesTableDisplayState):
     """Define the state of a ValuesTable to display the values of a Property Spec."""
 
-    frame_dependent = True
-
     def __init__(self, usd_property: Sdf.PropertySpec) -> None:
         """Construct a PropertyValueDisplayState.
 
@@ -123,17 +121,33 @@ class PropertySpecValueDisplayState(ValuesTableDisplayState):
         is_array = False
 
         if isinstance(self.prop_spec, Sdf.AttributeSpec):
-            value = self.prop_spec.default
-            if value:
-                # Check if the value of the attribute is an array.
-                type_name = self.prop_spec.typeName
-                is_array = type_name.isArray
+            layer = self.prop_spec.layer
+            value = None
+            # REVISIT: When moving back to 24.11 the TimeSamples methods will have
+            # moved from the layer to the AttributeSpec.
+            time_sample_count = layer.GetNumTimeSamplesForPath(self.prop_spec.path)
+
+            if time_sample_count:
+                value = []
+                is_array = True
+
+                # Populate the value array with the values of the time samples for the
+                # attribute.
+                for time_sample in layer.ListTimeSamplesForPath(self.prop_spec.path):
+                    value.append(
+                        layer.QueryTimeSample(self.prop_spec.path, time_sample),
+                    )
+
+            else:
+                value = self.prop_spec.default
+                if value:
+                    # Check if the value of the attribute is an array.
+                    type_name = self.prop_spec.typeName
+                    is_array = type_name.isArray
 
         if isinstance(self.prop_spec, Sdf.RelationshipSpec):
             value = self.prop_spec.targetPathList.explicitItems
-            if value:
-                # Relationships always return a list a list of paths.
-                is_array = True
+            is_array = True
 
         if not value:
             table.add_column("No Value")
