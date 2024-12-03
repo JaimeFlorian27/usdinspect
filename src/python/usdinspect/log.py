@@ -1,4 +1,5 @@
 """Contains all the conde related to setting up and retrieving the app's Logger."""
+
 import logging
 import logging.config
 
@@ -15,6 +16,9 @@ def get() -> logging.Logger:
 
     """
     logging.basicConfig(
-        level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()],
+        level="NOTSET",
+        format=FORMAT,
+        datefmt="[%X]",
+        handlers=[RichHandler()],
     )
     return logging.getLogger("usdinspect")
