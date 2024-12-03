@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = [
 "textual==0.86.*",
 "textual-slider==0.1.2",
-"usd-core==24.*",
+"usd-core==24.5.*",
 "colorhash==2.0.*"
 ]
 
@@ -18,10 +18,10 @@ usdinspect = "usdinspect.main:run"
 
 [project.optional-dependencies]
 dev = [
-    "ruff",
-    "pyright",
-    "pytest",
-    "types-usd",
+    "ruff==0.7.*",
+    "pyright==1.1",
+    "pytest==8.3.*",
+    "types-usd==24.5.*",
     "textual-dev==0.86.*"
 ]
 
