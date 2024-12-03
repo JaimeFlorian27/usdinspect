@@ -29,3 +29,7 @@ DataTable {
   height: 1fr;
   width: 1fr;
   }
+
+Slider{
+  width: 1fr;
+  }

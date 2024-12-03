@@ -8,6 +8,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
 "textual==0.86.*",
+"textual-slider==0.1.2",
 "usd-core==24.*",
 "colorhash==2.0.*"
 ]
