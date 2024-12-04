@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING
 from pxr import Sdf, Usd
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import HorizontalScroll, VerticalGroup
-from textual.widgets import Footer, Header, Label, TabbedContent
-from textual_slider import Slider
+from textual.containers import HorizontalScroll
+from textual.widgets import Footer, Header, TabbedContent
 
 from . import values_table
 from .widgets import (
@@ -17,6 +16,7 @@ from .widgets import (
     PrimLayerStackTable,
     PrimPropertiesTable,
     StageTree,
+    Timeline,
     ValueDataTabs,
 )
 
@@ -56,13 +56,7 @@ class UsdInspectApp(App):
             # Tabs for the Prim Data.
             yield PrimDataTabs(id="prim_data_tabs", classes="bordered_widget")
             yield ValueDataTabs(id="value_data_tabs", classes="bordered_widget")
-        with VerticalGroup():
-            yield Label("Frame:", id="frame_label")
-            yield Slider(
-                min=int(self._stage.GetStartTimeCode()),
-                max=int(self._stage.GetEndTimeCode()),
-                id="framerange_slider",
-            )
+        yield Timeline(self._stage, id_selector="timeline")
         yield Footer()
 
     @on(StageTree.NodeHighlighted, "StageTree")
@@ -182,15 +176,18 @@ class UsdInspectApp(App):
             value_tabs.hide_tab("metadata_tab")
             value_tabs.border_title = "Metadatum data"
 
-    @on(Slider.Changed, "#framerange_slider")
-    def _frame_changed(self, event: Slider.Changed) -> None:
-        """Handle frame changes by updating all time dependent widgets."""
-        if not event.value:
+    @on(Timeline.FrameChanged, "#timeline")
+    def _frame_changed(self, event: Timeline.FrameChanged) -> None:
+        """Handle frame changes by updating all time dependent widgets.
+
+        Args:
+            event: FrameChanged message posted by a Timeline.
+
+        """
+        if not event.frame:
             return
 
-        frame = int(event.value)
+        frame = event.frame
 
-        frame_label = self.query_one("#frame_label", Label)
-        frame_label.update(f"Frame: {frame}")
         table = self.query_one("#values_table", values_table.ValuesTable)
         table.frame = frame
