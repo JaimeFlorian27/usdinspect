@@ -57,8 +57,12 @@ class UsdInspectApp(App):
             yield PrimDataTabs(id="prim_data_tabs", classes="bordered_widget")
             yield ValueDataTabs(id="value_data_tabs", classes="bordered_widget")
         with VerticalGroup():
-            yield Label("Frame:0", id="frame_label")
-            yield Slider(min=0, max=100, id="framerange_slider")
+            yield Label("Frame:", id="frame_label")
+            yield Slider(
+                min=int(self._stage.GetStartTimeCode()),
+                max=int(self._stage.GetEndTimeCode()),
+                id="framerange_slider",
+            )
         yield Footer()
 
     @on(StageTree.NodeHighlighted, "StageTree")
