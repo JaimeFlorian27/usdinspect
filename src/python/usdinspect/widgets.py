@@ -1,17 +1,26 @@
 """Module that contains multiple widgets used in this application."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import colorhash
 from pxr import Sdf, Usd
 from rich.text import Text
 from textual import on
-from textual.app import ComposeResult
+from textual.containers import VerticalGroup
+from textual.message import Message
 from textual.reactive import reactive
-from textual.widgets import DataTable, TabbedContent, TabPane, Tree
-from textual.widgets.tree import EventTreeDataType, TreeNode
+from textual.widgets import DataTable, Label, Static, TabbedContent, TabPane, Tree
+from textual_slider import Slider
 
 from usdinspect import values_table
 
 from . import usd_utils
+
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
+    from textual.widgets.tree import EventTreeDataType, TreeNode
 
 
 class StageTree(Tree):
@@ -375,3 +384,98 @@ class ValueDataTabs(TabbedContent):
                 id="metadata_tab",
             ),
         )
+
+
+class Timeline(Static):
+    """Widget that allows displays and controls the current frame.
+
+    Currently composed by a slider and a label that shows the current frame.
+
+    The min and max values of the slider are determined from the Start and End TimeCode
+    of the USD Stage.
+    """
+
+    class FrameChanged(Message):
+        """Message posted when the frame changes in the timeline."""
+
+        def __init__(self, timeline: Timeline, frame: int) -> None:
+            """Notify that the frame changed in the timeline widget.
+
+            Args:
+                timeline: Timeline that sends the message.
+                frame: Frame that the timeline was changed to.
+
+            """
+            self.frame = frame
+            self.timeline = timeline
+            super().__init__()
+
+        @property
+        def control(self) -> Timeline:
+            """Control that posted this message.
+
+            Returns:
+                Timeline instance.
+
+            """
+            return self.timeline
+
+    def __init__(
+        self,
+        stage: Usd.Stage,
+        name: str | None = None,
+        id_selector: str | None = None,
+        classes: str | None = None,
+        disabled: bool = False,
+    ) -> None:
+        """Initialize a Timeline instance.
+
+        Args:
+            stage: USD Stage.
+            name: Name of the widget.
+            id_selector: ID of the widget, serves as CSS selector.
+            classes: Classes of the widget, serves as CSS selectors.
+            disabled: If the widget should be disabled by default.
+
+        """
+        self.stage = stage
+        self.current_frame = 0
+        super().__init__(
+            name=name,
+            id=id_selector,
+            classes=classes,
+            disabled=disabled,
+        )
+
+    def compose(self) -> ComposeResult:
+        """Populate the timeline Widget.
+
+        Yields:
+            Widgets wrapped as a ComposeResult.
+
+        """
+        with VerticalGroup():
+            yield Label("Frame:", id="frame_label")
+            yield Slider(
+                min=int(self.stage.GetStartTimeCode()),
+                max=int(self.stage.GetEndTimeCode()),
+                id="framerange_slider",
+            )
+
+    @on(Slider.Changed, "#framerange_slider")
+    def _frame_changed(self, event: Slider.Changed) -> None:
+        """Handle frame changes.
+
+        Args:
+            event: Changed message posted by the Slider widget.
+
+        """
+        if not event.value:
+            return
+
+        frame = int(event.value)
+        self.current_frame = frame
+
+        frame_label = self.query_one("#frame_label", Label)
+        frame_label.update(f"Frame: {frame}")
+        self.post_message(self.FrameChanged(self, frame))
