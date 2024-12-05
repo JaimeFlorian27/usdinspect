@@ -33,3 +33,7 @@ DataTable {
 Slider{
   width: 1fr;
   }
+
+.timeline_input {
+  width: 10;
+  }
