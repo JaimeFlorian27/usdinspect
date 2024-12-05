@@ -9,9 +9,7 @@ from pxr import Sdf, Usd
 from rich.text import Text
 from textual import on
 from textual.containers import (
-    Horizontal,
     HorizontalGroup,
-    HorizontalScroll,
     VerticalGroup,
 )
 from textual.message import Message
@@ -467,8 +465,8 @@ class Timeline(Static):
             Widgets wrapped as a ComposeResult.
 
         """
-        start_frame: int = int(self.stage.GetStartTimeCode())
-        end_frame: int = int(self.stage.GetEndTimeCode())
+        start_frame: int = int(self.stage.GetStartTimeCode() or 1)
+        end_frame: int = int(self.stage.GetEndTimeCode() or 100)
         with VerticalGroup():
             yield Label("Frame:", id="frame_label")
             with HorizontalGroup():
