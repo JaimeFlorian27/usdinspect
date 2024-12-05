@@ -37,6 +37,10 @@ def run() -> None:
         logger.error("The file does not exist.")
         return
 
+    if not filename.is_file():
+        logger.error("The path is not a file.")
+        return
+
     stage = Stage.Open(str(filename))
     app = UsdInspectApp(stage)
     app.run()
