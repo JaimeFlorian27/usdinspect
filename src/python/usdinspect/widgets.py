@@ -8,10 +8,23 @@ import colorhash
 from pxr import Sdf, Usd
 from rich.text import Text
 from textual import on
-from textual.containers import VerticalGroup
+from textual.containers import (
+    Horizontal,
+    HorizontalGroup,
+    HorizontalScroll,
+    VerticalGroup,
+)
 from textual.message import Message
 from textual.reactive import reactive
-from textual.widgets import DataTable, Label, Static, TabbedContent, TabPane, Tree
+from textual.widgets import (
+    DataTable,
+    Input,
+    Label,
+    Static,
+    TabbedContent,
+    TabPane,
+    Tree,
+)
 from textual_slider import Slider
 
 from usdinspect import values_table
@@ -454,13 +467,24 @@ class Timeline(Static):
             Widgets wrapped as a ComposeResult.
 
         """
+        start_frame: int = int(self.stage.GetStartTimeCode())
+        end_frame: int = int(self.stage.GetEndTimeCode())
         with VerticalGroup():
             yield Label("Frame:", id="frame_label")
-            yield Slider(
-                min=int(self.stage.GetStartTimeCode()),
-                max=int(self.stage.GetEndTimeCode()),
-                id="framerange_slider",
-            )
+            with HorizontalGroup():
+                yield Input(
+                    str(start_frame), id="start_frame_input", classes="timeline_input"
+                )
+                yield Slider(
+                    min=start_frame,
+                    max=end_frame,
+                    id="framerange_slider",
+                )
+                yield Input(
+                    str(end_frame),
+                    id="end_frame_input",
+                    classes="timeline_input",
+                )
 
     @on(Slider.Changed, "#framerange_slider")
     def _frame_changed(self, event: Slider.Changed) -> None:
@@ -479,3 +503,42 @@ class Timeline(Static):
         frame_label = self.query_one("#frame_label", Label)
         frame_label.update(f"Frame: {frame}")
         self.post_message(self.FrameChanged(self, frame))
+
+    @on(Input.Changed, "#start_frame_input")
+    def _start_frame_changed(self, event: Input.Changed) -> None:
+        """Handle value changes in the start frame input.
+
+        Args:
+            event: Changed message posted by the Input widget.
+
+        """
+        if not event.value.isdigit():
+            return
+
+        start_frame = int(event.value)
+        slider = self.query_one("#framerange_slider", Slider)
+
+        if not start_frame < slider.max:
+            return
+        slider.min = start_frame
+        slider.value = max(start_frame, slider.value)
+
+    @on(Input.Changed, "#end_frame_input")
+    def _end_frame_changed(self, event: Input.Changed) -> None:
+        """Handle value changes in the end frame input.
+
+        Args:
+            event: Changed message posted by the Input widget.
+
+        """
+        if not event.value.isdigit():
+            return
+
+        end_frame = int(event.value)
+        slider = self.query_one("#framerange_slider", Slider)
+
+        if not end_frame > slider.min:
+            return
+
+        slider.max = end_frame
+        slider.value = min(end_frame, slider.value)
