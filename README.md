@@ -11,6 +11,7 @@
 
 - Navigate and inspect USD file structure directly in the terminal.
 - View detailed information on prims, properties, and metadata.
+- Inspect property values at any frame using an interactive timeline widget.
 - Visually identify what Layer authors a Property via color tagging. Each Property is highlighted by a unique color that represents the Layer that has the strongest opinion on it.
 
 
@@ -21,7 +22,6 @@ This project is not intended to be a direct replacement to `usdview` as it has n
 
 ## What's missing?
 
-- Inspecting at a specific frame.
 - Layer Metadata inspection.
 - Prim Metadata-Layer color tagging.
 - Property Metadata-Layer color tagging.
