@@ -473,7 +473,10 @@ class Timeline(Static):
             yield Label("Frame:", id="frame_label")
             with HorizontalGroup():
                 yield Input(
-                    str(start_frame), id="start_frame_input", classes="timeline_input"
+                    str(start_frame),
+                    id="start_frame_input",
+                    classes="timeline_input",
+                    type="integer",
                 )
                 yield Slider(
                     min=start_frame,
@@ -484,6 +487,7 @@ class Timeline(Static):
                     str(end_frame),
                     id="end_frame_input",
                     classes="timeline_input",
+                    type="integer",
                 )
 
     @on(Slider.Changed, "#framerange_slider")
