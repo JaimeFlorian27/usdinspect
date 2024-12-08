@@ -31,6 +31,7 @@ from . import usd_utils
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
+    from textual.widgets.data_table import RowKey
     from textual.widgets.tree import EventTreeDataType, TreeNode
 
 
@@ -172,6 +173,40 @@ class PrimLayerStackTable(DataTable):
 
     BORDER_TITLE = "Prim Layer Stack"
     prim: reactive[Usd.Prim | None] = reactive(None)
+    current_spec: Sdf.PrimSpec | None = None
+
+    class LayerChanged(Message):
+        """Message posted when the selected layer changes."""
+
+        def __init__(
+            self,
+            data_table: PrimLayerStackTable,
+            cursor_row: int,
+            row_key: RowKey,
+        ) -> None:
+            """Construct a LayerChanged Message.
+
+            Args:
+                data_table: Table that emitted the message.
+                cursor_row: Row that is currently highlighted.
+                row_key: Key of the highlighted row.
+
+            """
+            super().__init__()
+            self.cursor_row = cursor_row
+            self.row_key = row_key
+            self.data_table = data_table
+            self.current_spec = data_table.current_spec
+
+        @property
+        def control(self) -> PrimLayerStackTable:
+            """Control that posted this message.
+
+            Returns:
+                PrimLayerStackTable instance.
+
+            """
+            return self.data_table
 
     def compose(self) -> ComposeResult:
         """Override compose to add cursor type and default columns.
@@ -236,6 +271,30 @@ class PrimLayerStackTable(DataTable):
                 key=f"{layer.identifier}|{spec.path}",
             )
         self.index = 0
+
+    @on(DataTable.RowHighlighted, "PrimLayerStackTable")
+    def _handle_row_highlighted(
+        self, event: PrimLayerStackTable.RowHighlighted,
+    ) -> None:
+        """Handle row highlighting in the PrimLayerStackTable.
+
+        Args:
+            event: RowHighlighted message posted by the PrimLayerStackTable.
+
+        """
+        row_key: str | None = event.row_key.value
+        if not row_key:
+            return
+
+        if event.row_key.value != "composed":
+            layer_path, prim_spec_path = row_key.split("|")
+            self.current_spec = Sdf.Layer.FindOrOpen(layer_path).GetPrimAtPath(
+                prim_spec_path,
+            )
+        else:
+            self.current_spec = None
+
+        self.post_message(self.LayerChanged(self, event.cursor_row, event.row_key))
 
 
 class PrimPropertiesTable(DataTable):
@@ -349,7 +408,7 @@ class PrimDataTabs(TabbedContent):
     def _prim_data_tab_changed(self, event: TabbedContent.TabActivated) -> None:
         """Handle changing tabs.
 
-        this methis is in charge of makin sure that the prim_data_holder widget that
+        this method is in charge of making sure that the prim_data_holder widget that
         becomes visible when a tab is changed has its data_object updated.
 
         Args:
@@ -395,6 +454,89 @@ class ValueDataTabs(TabbedContent):
                 id="metadata_tab",
             ),
         )
+
+
+class PrimLayerTabs(TabbedContent):
+    """TabbedContent widget that contains a PrimLayerStackTable and a MetadataTable."""
+
+    BORDER_TITLE = "Prim Layer Data"
+
+    prim: reactive[Usd.Prim | None] = reactive(None)
+    selected_layer: Sdf.Layer | None = None
+
+    def on_mount(self) -> None:
+        """Add the TabPanes that compose the widget."""
+        self.add_pane(
+            TabPane(
+                "Layer Stack",
+                PrimLayerStackTable(
+                    id="prim_layer_stack_table",
+                    classes="layer_data_holder",
+                ),
+                id="prim_layer_stack_tab",
+            ),
+        )
+        self.add_pane(
+            TabPane(
+                "Layer Metadata",
+                MetadataTable(id="layer_metadata_table", classes="layer_data_holder"),
+                id="layer_metadata_tab",
+            ),
+        )
+
+    def watch_prim(self) -> None:
+        """React to changes of the Prim attribute."""
+        if not self.prim:
+            return
+
+        if not self.active_pane:
+            return
+
+        active_widget = self.active_pane.query_one(
+            ".layer_data_holder",
+        )
+
+        if isinstance(active_widget, PrimLayerStackTable):
+            active_widget.prim = self.prim
+
+    @on(TabbedContent.TabActivated, "PrimLayerTabs")
+    def _prim_layer_tab_changed(self, event: TabbedContent.TabActivated) -> None:
+        """Handle changing tabs.
+
+        this method is in charge of making sure that the layer_data_holder widget that
+        becomes visible when the tab is changed has its data_object updated.
+
+        Args:
+            event: Event that triggered a call to this method.
+
+        """
+        if not event.tabbed_content:
+            return
+        active_pane = event.tabbed_content.active_pane
+
+        if not active_pane:
+            return
+
+        active_widget = active_pane.query_one(
+            ".layer_data_holder",
+        )
+
+        if isinstance(active_widget, MetadataTable):
+            pseudo_root: Sdf.PrimSpec | None = None
+            if self.selected_layer:
+                pseudo_root = self.selected_layer.pseudoRoot
+
+            active_widget.data_object = pseudo_root
+
+    @on(PrimLayerStackTable.LayerChanged, "#prim_layer_stack_table")
+    def _selected_layer_changed(self, event: PrimLayerStackTable.LayerChanged) -> None:
+        if not event.current_spec:
+            self.selected_layer = None
+            self.hide_tab("layer_metadata_tab")
+            return
+
+        self.selected_layer = event.current_spec.layer
+        self.show_tab("layer_metadata_tab")
 
 
 class Timeline(Static):

@@ -121,7 +121,7 @@ def get_object_metadata(usd_object: Usd.Object) -> Iterator[tuple[str, Any]]:
 def get_spec_metadata(spec: Sdf.Spec) -> Iterator[tuple[str, Any]]:
     """Iterate over the Metadata of a Sdf Spec.
 
-    Only PrimSpec and PropertySpec obejcts have AssetInfo and CustomData.
+    Only PrimSpec and PropertySpec objects have AssetInfo and CustomData.
 
     Yields:
         Key-value item pairs for each metadatum.
