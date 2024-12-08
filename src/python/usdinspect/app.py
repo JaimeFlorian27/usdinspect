@@ -146,7 +146,8 @@ class UsdInspectApp(App):
             prim_data_tabs.prim = prim_layer_tab.prim
 
         # Otherwise use the spec of that prim.
-        prim_data_tabs.prim = event.current_spec
+        else:
+            prim_data_tabs.prim = event.current_spec
 
     @on(TabbedContent.TabActivated, "#prim_data_tabs")
     def _prim_data_tab_changed(self, event: TabbedContent.TabActivated) -> None:
