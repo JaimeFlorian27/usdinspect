@@ -1,6 +1,6 @@
 [project]
 name = "usdinspect"
-version = "0.2.0"
+version = "0.3.0"
 description = "A tool for inspecting USD files."
 readme = "README.md" 
 authors = [{ name = "Jaime Florian Urueta", email = "jaimeflorian27@gmail.com" }]
