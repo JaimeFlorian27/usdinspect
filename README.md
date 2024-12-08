@@ -22,9 +22,8 @@ This project is not intended to be a direct replacement to `usdview` as it has n
 
 ## What's missing?
 
-- Layer Metadata inspection.
-- Prim Metadata-Layer color tagging.
-- Property Metadata-Layer color tagging.
+- [ ] Prim Metadata-Layer color tagging.
+- [ ] Property Metadata-Layer color tagging.
 - And a lot more...
 
 
