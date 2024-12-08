@@ -1,7 +1,6 @@
 """Module that defines the application class."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pxr import Sdf, Usd
 from textual import on
@@ -14,14 +13,12 @@ from .widgets import (
     MetadataTable,
     PrimDataTabs,
     PrimLayerStackTable,
+    PrimLayerTabs,
     PrimPropertiesTable,
     StageTree,
     Timeline,
     ValueDataTabs,
 )
-
-if TYPE_CHECKING:
-    from pxr.Sdf import PrimSpec
 
 
 class UsdInspectApp(App):
@@ -50,7 +47,7 @@ class UsdInspectApp(App):
         yield Header()
         with HorizontalScroll():
             yield StageTree(self._stage, focus=True, classes="bordered_widget")
-            yield PrimLayerStackTable(classes="bordered_widget")
+            yield PrimLayerTabs(id="prim_layer_tabs", classes="bordered_widget")
 
         with HorizontalScroll(can_focus=False):
             # Tabs for the Prim Data.
@@ -67,7 +64,7 @@ class UsdInspectApp(App):
 
         """
         # Update the widgets that depend on the selected prim.
-        self.query_one(PrimLayerStackTable).prim = event.prim
+        self.query_one(PrimLayerTabs).prim = event.prim
 
     @on(PrimPropertiesTable.RowHighlighted, "PrimPropertiesTable")
     def _property_highlighted(
@@ -127,10 +124,10 @@ class UsdInspectApp(App):
             metadata_value,
         )
 
-    @on(PrimLayerStackTable.RowHighlighted, "PrimLayerStackTable")
+    @on(PrimLayerStackTable.LayerChanged, "PrimLayerStackTable")
     def _layer_highlighted(
         self,
-        event: PrimLayerStackTable.RowHighlighted,
+        event: PrimLayerStackTable.LayerChanged,
     ) -> None:
         """Handle the selection of a layer that contributes to the current prim.
 
@@ -142,27 +139,14 @@ class UsdInspectApp(App):
             return
 
         prim_data_tabs = self.query_one("#prim_data_tabs", PrimDataTabs)
-        # Handle composed case, get the currently selected prim and assign it to
-        # the properties table prim attr. I do this way as the reactive prim property
-        # will always update the properties table when assigned.
-        if row_key == "composed":
-            selected_prim_node = self.query_one(StageTree).cursor_node
-            if not selected_prim_node:
-                return
 
-            selected_prim = self._stage.GetPrimAtPath(str(selected_prim_node.data))
-            prim_data_tabs.prim = selected_prim
-            return
+        # If there is no spec then use the prim.
+        if not event.current_spec:
+            prim_layer_tab = self.query_one("#prim_layer_tabs", PrimLayerTabs)
+            prim_data_tabs.prim = prim_layer_tab.prim
 
-        # Regular case, get the prim spec from the selected layer and assign it to the
-        # properties table.
-        layer_path, prim_spec_path = row_key.split("|")
-        prim_spec: PrimSpec | None = Sdf.Layer.FindOrOpen(layer_path).GetPrimAtPath(
-            prim_spec_path,
-        )
-
-        prim_data_tabs.prim = prim_spec
-        return
+        # Otherwise use the spec of that prim.
+        prim_data_tabs.prim = event.current_spec
 
     @on(TabbedContent.TabActivated, "#prim_data_tabs")
     def _prim_data_tab_changed(self, event: TabbedContent.TabActivated) -> None:
